@@ -1,7 +1,7 @@
 // ----------------------------------------------------------------------------
 // A Lightweight Class for representing Dead and Alive Cells.
 // ----------------------------------------------------------------------------
-
+// oh god
 // HEYYYyY!!!!!!! Hey just a test
 
 public class Cell implements java.io.Serializable
