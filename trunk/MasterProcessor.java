@@ -118,9 +118,11 @@ public class MasterProcessor extends Processor
    public void DoWork()
    {
       this.LogMessage("Master Processor Exiting!");
-      System.exit(-1);
+      return;
       
-       while (true)
+//      System.exit(-1);
+      
+ /*      while (true)
        {
           //
           // Give the CPU a break.
@@ -134,7 +136,7 @@ public class MasterProcessor extends Processor
           {
              System.exit(-1);
           }
-       }
+       }*/
    }
    
    public Cell[][] GetGlobalGameBoard()
