@@ -12,13 +12,19 @@ public class ParallelGameOfLife
       Comm oCommWorld = Comm.world();
       int nNumProcessors = oCommWorld.size();
       int nMyProcessorRank = oCommWorld.rank();
-      
+
+      long startTime, endTime;
+      long nanoToMilliConvert = 1000000;
+
       int nNumGridRows = Integer.parseInt(args[0]);
       int nNumGridCols = Integer.parseInt(args[1]);
       int nNumAliveCells = Integer.parseInt(args[2]);
       int nNumIterationsToRun = Integer.parseInt(args[3]);
       String strInputFilename = args[4];
-      
+     
+
+      startTime = System.nanoTime();
+
       //
       // Master
       //
@@ -30,6 +36,9 @@ public class ParallelGameOfLife
                nNumAliveCells, nNumIterationsToRun, strInputFilename);
          master.DistributeDataToWorkers();
          master.DoWork();
+         
+	 endTime = System.nanoTime();
+         System.out.format("%d milliseconds elapsed\n", (endTime - startTime) / nanoToMilliConvert);
       }
       
       //
@@ -43,5 +52,7 @@ public class ParallelGameOfLife
          worker.ReceiveDataFromMaster();
          worker.DoWork();
       }
+
+
    }
 }
