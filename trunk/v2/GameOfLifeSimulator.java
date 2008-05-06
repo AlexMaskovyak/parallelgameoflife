@@ -21,6 +21,11 @@ public interface GameOfLifeSimulator {
 	public abstract void addLivingCells(List<Cell> livingCells);
 	
 	/**
+	 * Clears the living cells stored in the simulator.
+	 */
+	public abstract void clearLivingCells();
+	
+	/**
 	 * Simulate the cell interactions to produce the next game of life state.
 	 */
 	public abstract void performSimulation();

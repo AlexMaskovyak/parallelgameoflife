@@ -21,16 +21,16 @@ public class SequentialGameOfLifeSimulator implements GameOfLifeSimulator {
 	// <cell used strictly for identification, cell with current neighborcount>
 	
 	// hold live cells
-	private HashMap<Cell, Cell> livingCells;
+	protected HashMap<Cell, Cell> livingCells;
 	// hold potentially alive cells
-	private HashMap<Cell, Cell> gestatingCells;
+	protected HashMap<Cell, Cell> gestatingCells;
 	
 	// hold those cells which ought to be removed from the livingCells area
-	private List<Cell> cellsToRemove;
+	protected List<Cell> cellsToRemove;
 	
 	// additional cell / game rules
-	private CellLifeRules rules;
-	private CellNeighborhood neighborhood;
+	protected CellLifeRules rules;
+	protected CellNeighborhood neighborhood;
 	
 	
 	/**
@@ -68,21 +68,26 @@ public class SequentialGameOfLifeSimulator implements GameOfLifeSimulator {
 		this.addLivingCells(liveCells);
 	}
 	
-	/* (non-Javadoc)
+	/* 
+	 * (non-Javadoc)
 	 * @see GameOfLifeSimulator#performSimulation()
 	 */
 	public void performSimulation() {
-		//
-		// setup temporary references
-		//
-		
-		List<Cell> neighbors;
-		
-		
-		//
 		// Preparation, clean-up, etc.
-		//
+		this.cleanCellCounts();
 		
+		// Neighbor creation and neighbor counting
+		this.updateCellCounts();
+		
+		// Killing and birthing cells area
+		this.updateLiveCellList();
+	}
+	
+	/**
+	 * Prepares for the simulation by clearing gestating cell storage areas
+	 * and zeroing out the neighbor counts.
+	 */
+	protected void cleanCellCounts() {
 		// clear the gestating area for new arrivals
 		this.gestatingCells.clear();
 		// clear the removal list for new arrivals
@@ -92,13 +97,20 @@ public class SequentialGameOfLifeSimulator implements GameOfLifeSimulator {
 		Set<Cell> livingCellSet = this.livingCells.keySet();
 		for (Cell livingCell : livingCellSet) {
 			livingCell.neighborCount = 0;
-		}
-		
-		
+		}		
+	}
+	
+	/**
+	 * Creates an up-to-date neighbor count for all live cells as well as their
+	 * neighbors (which will be created as needed).
+	 */
+	protected void updateCellCounts() {
 		//
-		// Neighbor creation and neighbor counting
+		// setup temporary references
 		//
-		
+		Set<Cell> livingCellSet = this.livingCells.keySet();
+		List<Cell> neighbors;
+
 		// add neighbors to the gestating area where needed
 		for (Cell livingCell : livingCellSet) {
 			neighbors = this.neighborhood.getNeighborIdentities(livingCell);
@@ -126,12 +138,18 @@ public class SequentialGameOfLifeSimulator implements GameOfLifeSimulator {
 				neighbor.neighborCount = 1;
 				this.gestatingCells.put(neighbor, neighbor);
 			}
-		}
-		
-		
+		}		
+	}
+
+	/**
+	 * Performs killing and birthing of cells.  Updates the live cell lists
+	 * with new arrivals.
+	 */
+	protected void updateLiveCellList() {
 		//
-		// Killing and birthing cells area
+		// setup temporary references
 		//
+		Set<Cell> livingCellSet = this.livingCells.keySet();
 		
 		// for the living cells, determine whether they remain alive
 		for (Cell livingCell : livingCellSet) {
@@ -151,10 +169,11 @@ public class SequentialGameOfLifeSimulator implements GameOfLifeSimulator {
 				// add them to the living cell list
 				this.livingCells.put(gestatingCell, gestatingCell);
 			}
-		}
+		}		
 	}
 	
-	/* (non-Javadoc)
+	/* 
+	 * (non-Javadoc)
 	 * @see GameOfLifeSimulator#getCurrentState()
 	 */
 	public List<Cell> getCurrentState() {
@@ -162,11 +181,16 @@ public class SequentialGameOfLifeSimulator implements GameOfLifeSimulator {
 		return cells;
 	}
 
-	/* (non-Javadoc)
+	/* 
+	 * (non-Javadoc)
 	 * @see GameOfLifeSimulator#addLivingCell()
 	 */	
 	public void addLivingCell(Cell livingCell) {
-		this.livingCells.put(livingCell, livingCell);
+		// ensure that this cell is a resident of the neighborhood
+		// if it isn't, don't bother with the needless computation
+		if (this.neighborhood.isResident(livingCell)) {
+			this.livingCells.put(livingCell, livingCell);			
+		}
 	}
 
 	/* (non-Javadoc)
@@ -174,7 +198,16 @@ public class SequentialGameOfLifeSimulator implements GameOfLifeSimulator {
 	 */	
 	public void addLivingCells(List<Cell> livingCells) {
 		for (Cell c : livingCells) {
-			this.livingCells.put(c, c);
+			this.addLivingCell(c);
 		}
+	}
+
+	/*
+	 * (non-Javadoc)
+	 * @see GameOfLifeSimulator#clearLivingCells()
+	 */
+	public void clearLivingCells() {
+		this.livingCells.clear();
+		this.gestatingCells.clear();
 	}
 }
