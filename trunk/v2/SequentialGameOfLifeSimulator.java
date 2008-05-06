@@ -210,4 +210,22 @@ public class SequentialGameOfLifeSimulator implements GameOfLifeSimulator {
 		this.livingCells.clear();
 		this.gestatingCells.clear();
 	}
+
+	/*
+	 * (non-Javadoc)
+	 * @see GameOfLifeSimulator#removeLivingCell(Cell)
+	 */
+	public void removeLivingCell(Cell livingCell) {
+		this.livingCells.remove(livingCell);
+	}
+
+	/*
+	 * (non-Javadoc)
+	 * @see GameOfLifeSimulator#removeLivingCells(java.util.List)
+	 */
+	public void removeLivingCells(List<Cell> livingCells) {
+		for (Cell c : livingCells) {
+			this.livingCells.remove(c);
+		}
+	}
 }
