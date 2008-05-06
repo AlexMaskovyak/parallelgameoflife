@@ -48,7 +48,7 @@ public class GameOfLifeStateGenerator {
 	
 	/**
 	 * Creates a list of the specified number of cells randomly positioned in 
-	 * the specified positive range.
+	 * the specified positive square range.
 	 * @param cellsToCreate Number of cells to create.
 	 * @param minCoordinateValue Minimum value in the range, must be positive.
 	 * @param maxCoordinateValue Maximum value in the range, must be positive.
@@ -64,7 +64,13 @@ public class GameOfLifeStateGenerator {
 		Cell temp;
 		int x, y;
 		
-		for (int i = 0; i < cellsToCreate; ++i) {
+		// ensure that we are not attempting to generate more cells than
+		// is possible in the given range
+		int coordinateValueRange = (maxCoordinateValue - minCoordinateValue);
+		int maxCellsPossible = coordinateValueRange * coordinateValueRange;
+		
+		
+		for (int i = 0; i < cellsToCreate && i != maxCellsPossible; ++i) {
 			x = this.getRandomIntInRange(minCoordinateValue, maxCoordinateValue);
 			y = this.getRandomIntInRange(minCoordinateValue, maxCoordinateValue);
 			temp = new Cell(x, y);

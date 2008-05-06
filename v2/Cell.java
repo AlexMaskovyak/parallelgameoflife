@@ -1,16 +1,29 @@
+import java.util.Comparator;
+
 
 /**
- * A petite Cell class that basically functions to preserve Cell identity
- * for hashing and comparison purposes.
- * It also stores the quantity of neighbors it possesses.
+ * A petite cell class that basically functions to preserve Cell identity for
+ * hashing and comparison purposes. It also serves as a storage device for
+ * neighbor counts.  Additionally, it possesses two comparators for sorting
+ * purposes known as RowComparator and ColumnComparator.
  * @author Alex Maskovyak
- *
+ * @TODO Determine if there is a way to secure x, y so that this can be
+ * 			extended into other Cell objects (3D cell, etc.)
  */
-public class Cell {
+public class Cell implements java.io.Serializable {
 
-	public final int x, y;
+	//
+	// public fields
+	// 
 	public int neighborCount;
+	final int x, y;		
+	
+	//
+	// private fields
+	//
 	private static final int HASHFACTOR = 65521;
+	private static final long serialVersionUID = 1L;
+	
 	
 	/**
 	 * Default constructor.
@@ -54,4 +67,36 @@ public class Cell {
 	public String toSuccinctString() {
 		return String.format("%d %d", this.x, this.y);
 	}
+	
+	/**
+	 * Anonymous comparison class for cell objects, useful for sorting cells
+	 * by column and then row.
+	 */
+	public static final Comparator<Cell> ColumnComparator = new Comparator<Cell>() {
+		public int compare(Cell cell1, Cell cell2) {
+			// sort first by y, then by x if needed
+			int yDiff = cell1.y - cell2.y;	
+			if (yDiff == 0) {
+				return cell1.x - cell2.x;
+			}
+			
+			return yDiff;
+		}
+	};
+	
+	/**
+	 * Anonymous comparison class for cell objects, useful for sorting cells
+	 * by row and then column.
+	 */
+	public static final Comparator<Cell> RowComparator = new Comparator<Cell>() {
+		public int compare(Cell cell1, Cell cell2) {
+			// sort first by x, then by y if needed
+			int xDiff = cell1.x - cell2.x;
+			if (xDiff == 0) {
+				return cell1.y - cell2.y;
+			}
+			
+			return xDiff;
+		}
+	};
 }
