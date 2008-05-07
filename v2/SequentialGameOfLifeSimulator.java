@@ -228,4 +228,12 @@ public class SequentialGameOfLifeSimulator implements GameOfLifeSimulator {
 			this.livingCells.remove(c);
 		}
 	}
+
+	/*
+	 * (non-Javadoc)
+	 * @see GameOfLifeSimulator#getLivingCellCount()
+	 */
+	public int getLivingCellCount() {
+		return this.livingCells.size();
+	}
 }
