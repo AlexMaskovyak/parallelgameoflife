@@ -32,6 +32,12 @@ public interface GameOfLifeSimulator {
 	public abstract List<Cell> getCurrentState();
 
 	/**
+	 * Determines how many living cells are present in the simulator.
+	 * @return Count of living cells this simulator has in its current state.
+	 */
+	public abstract int getLivingCellCount();
+	
+	/**
 	 * Simulate the cell interactions to produce the next game of life state.
 	 */
 	public abstract void performSimulation();
