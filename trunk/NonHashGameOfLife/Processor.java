@@ -52,6 +52,28 @@ public abstract class Processor {
 	    String strFilename = "Log/Processor_" + this.m_nProcessorRank + ".txt";
 	    File outputFile = new File(strFilename);
 	    outputFile.delete();
+	    
+	    //
+       // Compute Left Neighbor
+       //
+         
+       if (m_nProcessorRank == 0) {        
+         m_nLeftNeighborRank = -1;
+       }
+       else {
+         m_nLeftNeighborRank = (m_nProcessorRank - 1) % nNumProcessors;
+       }
+         
+       //
+       // Compute Right Neighbor
+       //
+         
+       if (m_nProcessorRank + 1 == nNumProcessors) {
+         m_nRightNeighborRank = -1;
+       }
+       else {
+         m_nRightNeighborRank = (m_nProcessorRank + 1) % nNumProcessors;
+       }
 	}
    
 	/**
@@ -62,14 +84,17 @@ public abstract class Processor {
 		int nIterationCounter = 0;
 
 		while (nIterationCounter < iterations) {
-			this.SaveIterationData();
-
+			//this.SaveIterationData();
+		   
 			//
 			// Send this Processor's Border Information to its corresponding neighbors.
 			//
 
-			this.SendBorders();
-			this.ReceiveBorders();
+			this.sendLeftBorder();
+         this.receiveRightBorder();
+         
+         this.sendRightBorder();
+         this.receiveLeftBorder();
 
 			//
 			// Once bordering Cells are known, perform the Game of Life computation
@@ -78,12 +103,22 @@ public abstract class Processor {
 
 			m_ZoneManager.PerformSimulation();
 			m_ZoneManager.ClearNeighborBorderData();
+			
+			try
+         {
+            //System.out.println("Processor: " + this.m_nProcessorRank + " reached barrier: " + nIterationCounter);
+            Comm.world().barrier();
+         }
+         catch (IOException e)
+         {
+            System.out.println("Could not handle barrier: " + e.getMessage());
+         }
 
 			nIterationCounter++;	
 		}
 	}
 
-	public void SendBorders() {
+	public void sendLeftBorder() {
 		if (m_nLeftNeighborRank != -1) {
 			BooleanBuf aLeftZoneBorderToSend = this.m_ZoneManager.GetBorder(ZoneManager.BorderTag.Left);
 			CommRequest request = new CommRequest();
@@ -101,7 +136,9 @@ public abstract class Processor {
 				this.LogMessage("Processor: " + m_nProcessorRank + " could not " + "send Left Border to Processor: " + m_nLeftNeighborRank);
 			}
 		}
+	}
 	      
+	public void sendRightBorder() {
 		if (m_nRightNeighborRank != -1) {
 		   BooleanBuf aRightZoneBorderToSend = this.m_ZoneManager.GetBorder(ZoneManager.BorderTag.Right);
 		   CommRequest request = new CommRequest();
@@ -128,7 +165,7 @@ public abstract class Processor {
 	// their Left Neighbors and Left Borders from their Right Neighbors.
 	//
 	   
-	public void ReceiveBorders() {
+	public void receiveLeftBorder() {
 		if (m_nLeftNeighborRank != -1) {
 		   BooleanBuf aBorderToReceive = BooleanBuf.buffer(m_aGlobalGameBoard);
 			CommStatus receiveStatus = null;
@@ -151,7 +188,9 @@ public abstract class Processor {
 				this.LogMessage("Processor: " + m_nProcessorRank + " could not " + "send Left Border to Processor: " + m_nLeftNeighborRank);
 			}
 		}
-	      
+	}
+	
+	public void receiveRightBorder() {
 		if (m_nRightNeighborRank != -1) {
 		   BooleanBuf aBorderToReceive = BooleanBuf.buffer(m_aGlobalGameBoard);
 			CommStatus receiveStatus = null;
@@ -206,25 +245,25 @@ public abstract class Processor {
 	 */
    protected void LogMessage(String strMessage) {
 	  
-//	   try {
-//		   String strFilename = "Log/Processor_" + this.m_nProcessorRank + ".txt";
-//		   m_LogFileWriter = new FileWriter(strFilename, true);
-//	   }
-//	   catch (IOException e) {
-//		   System.out.println(e.toString());
-//		   return;
-//	   }
-//      
-//	   SimpleDateFormat formatter = new SimpleDateFormat("yyyy.MM.dd 'at' hh:mm:ss a zzz");
-//	   Date dCurrentTime = new Date();
-//	   String dateString = formatter.format(dCurrentTime);
-//      
-//	   try {
-//		   m_LogFileWriter.write(dateString + ": " + strMessage + "\n");
-//		   m_LogFileWriter.close();
-//	   }
-//	   catch (IOException e) {
-//		   return;
-//	   }      
+	   try {
+		   String strFilename = "Log/Processor_" + this.m_nProcessorRank + ".txt";
+		   m_LogFileWriter = new FileWriter(strFilename, true);
+	   }
+	   catch (IOException e) {
+		   System.out.println(e.toString());
+		   return;
+	   }
+      
+	   SimpleDateFormat formatter = new SimpleDateFormat("yyyy.MM.dd 'at' hh:mm:ss a zzz");
+	   Date dCurrentTime = new Date();
+	   String dateString = formatter.format(dCurrentTime);
+      
+	   try {
+		   m_LogFileWriter.write(dateString + ": " + strMessage + "\n");
+		   m_LogFileWriter.close();
+	   }
+	   catch (IOException e) {
+		   return;
+	   }      
    	}
 }
