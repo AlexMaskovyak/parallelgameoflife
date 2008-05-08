@@ -120,10 +120,10 @@ public class MasterProcessor extends Processor {
 		
 		for (int nDestProcessorRank = 1; nDestProcessorRank < this.m_nNumProcessors; nDestProcessorRank++) {
 			try {
-				m_CommWorld.send(nDestProcessorRank, aMatrixColSlices[nDestProcessorRank], request);
+				m_CommWorld.send(nDestProcessorRank, aMatrixColSlices[nDestProcessorRank]);
 			}
 			catch (IOException e) {
-				this.LogMessage("Master could not send to Processor: " + nDestProcessorRank);
+				System.out.println("Master could not send to Processor: " + nDestProcessorRank);
 			}
 		}
 		
@@ -138,25 +138,6 @@ public class MasterProcessor extends Processor {
 	   int nNumColsNeeded = aMatrixColSlices[0].length() / nNumRowsNeeded;
 	      
 		m_ZoneManager = new ZoneManager(nNumRowsNeeded, nNumColsNeeded, aMatrixColSlices[0]);
-	}
-   
-	public void DistributeDataToAll() {
-		//
-		// Partition the Global Game Board into fixed sized chunks.  In PJ,
-		// objects are communicated to other processors via Object Serialization.
-		//
-		
-		Range[] colRanges = new Range(0, this.m_nNumGridCols - 1).subranges(this.m_nNumProcessors);
-		BooleanBuf[] aMatrixColSlices = BooleanBuf.colSliceBuffers(m_aGlobalGameBoard, colRanges);
-      
-		BooleanBuf aMatrixSliceToReceive = BooleanBuf.buffer(m_aGlobalGameBoard);
-
-		try {
-			m_CommWorld.scatter(0, aMatrixColSlices, aMatrixSliceToReceive);
-		}
-		catch (IOException e) {
-			this.LogMessage("Master could not send to Processors");
-		}
 	}
 	
 	//

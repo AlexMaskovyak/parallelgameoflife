@@ -14,34 +14,6 @@ public class WorkerProcessor extends Processor {
 			int nNumGridCols)
 	{
 		super(nProcessorRank, nNumProcessors, nNumGridRows, nNumGridCols);
-
-		this.LogMessage("------------------------------");
-	      
-	    //
-	    // Compute Left Neighbor
-	    //
-	      
-	    if (m_nProcessorRank == 0) {        
-	    	// No Wrapping for now, so make leftmost processor's left neighbor invalid.
-	    	m_nLeftNeighborRank = -1;
-	    }
-	    else {
-	    	m_nLeftNeighborRank = (m_nProcessorRank - 1) % nNumProcessors;
-	    }
-	      
-	    //
-	    // Compute Right Neighbor
-	    //
-	      
-	    if (m_nProcessorRank + 1 == nNumProcessors) {
-	    	//m_nRightNeighborRank = nNumProcessors;
-	         
-	    	// No Wrapping for now, so make rightmost processor's right neighbor invalid.
-	    	m_nRightNeighborRank = -1;
-	    }
-	    else {
-	    	m_nRightNeighborRank = (m_nProcessorRank + 1) % nNumProcessors;
-	    }
    }
    
    public void ReceiveDataFromMaster()
@@ -79,45 +51,9 @@ public class WorkerProcessor extends Processor {
       int nNumColsNeeded = nReceiveBufferLength / m_nNumGridCols;
       
       m_ZoneManager = new ZoneManager(nNumRowsNeeded, nNumColsNeeded, aMatrixSliceToReceive);
+      System.out.println("CREATED ZONE MANAGER AT: " + this.m_nProcessorRank + 
+            "receive buffer " + nReceiveBufferLength + " ROWS NEEDED: " + nNumRowsNeeded + " AND COLS: " +
+            nNumColsNeeded);
    }
-   
-	/* public void DistributeDataToAll() {
-		//
-		// Partition the Global Game Board into fixed sized chunks.  In PJ,
-		// objects are communicated to other processors via Object Serialization.
-		//
-		
-		ObjectBuf<Cell> aMatrixSliceToReceive = ObjectBuf.buffer(m_aGlobalGameBoard);
-
-		try {
-			m_CommWorld.scatter(0, null, aMatrixSliceToReceive);
-		}
-		catch (IOException e) {
-			this.LogMessage("Worker could not receive info from Master");
-		}
-		
-	    //
-	    // Set up the Zone Manager for the Worker Processor by calculating the
-	    // number of required rows and columns needed as per the received data.
-	    // 
-	      
-	    //int nReceiveBufferLength = receiveStatus.length;
-	    int nNumRowsNeeded = m_nNumGridRows;
-	    int nNumColsNeeded = m_nNumGridCols / m_CommWorld.size();
-	      
-	    m_ZoneManager = new ZoneManager(nNumRowsNeeded, nNumColsNeeded, aMatrixSliceToReceive);
-	}*/
-   
-   
-   //
-   // Main Processing Loop
-   //
-   
-   
-   //
-   // At each iteration, the Worker Processor will send its 'Border' Cells
-   // to its designated neighbors.
-   //
-   
 
 }

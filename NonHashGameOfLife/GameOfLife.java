@@ -1,6 +1,6 @@
 import edu.rit.pj.Comm;
 
-public class ParallelGameOfLife 
+public class GameOfLife 
 {
    public static void main(String[] args) throws Exception
    {
@@ -33,12 +33,13 @@ public class ParallelGameOfLife
                nNumAliveCells, strInputFilename);
          
          startTime = System.nanoTime();
-         
+
          master.DistributeDataToWorkers();
          master.DoWork(nNumIterationsToRun);
-         
+
          endTime = System.nanoTime();
-         System.out.format("%d milliseconds elapsed\n", (endTime - startTime) / nanoToMilliConvert);
+         System.out.format("Processor %d: %d milliseconds elapsed\n", nMyProcessorRank,
+               (endTime - startTime) / nanoToMilliConvert);
       }
       
       //
@@ -49,8 +50,15 @@ public class ParallelGameOfLife
       {
          WorkerProcessor worker = new WorkerProcessor(
                nMyProcessorRank, nNumProcessors, nNumGridRows, nNumGridCols);
+         
+         startTime = System.nanoTime();
+         
          worker.ReceiveDataFromMaster();
          worker.DoWork(nNumIterationsToRun);
+         
+         endTime = System.nanoTime();
+         System.out.format("Processor %d: %d milliseconds elapsed\n", nMyProcessorRank,
+               (endTime - startTime) / nanoToMilliConvert);
       }
 
 
