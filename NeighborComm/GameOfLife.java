@@ -1,5 +1,6 @@
 import java.util.List;
 import edu.rit.pj.Comm;
+import java.io.IOException;
 
 /**
  * Handles the execution of the game of life.
@@ -8,6 +9,9 @@ import edu.rit.pj.Comm;
  */
 public class GameOfLife {
 
+   public static long startTime = 0; 
+   public static long stopTime = 0; 
+   
 	/**
 	 * Main executable method for the game of life.
 	 * @param args
@@ -43,15 +47,12 @@ public class GameOfLife {
                nNumLivingCellsInFile, 
                myProcessorRank, 
                numProcessors);
-      
-      // run the glider simulation as an example
-      long startTime = System.nanoTime();
-      
+
       GameOfLife.runNeighborCommTestCase(simulator, nNumIterationsToRun, strInputFilename);
       
       // display running time
-      long endTime = System.nanoTime();
-      long runTime = endTime - startTime;
+      stopTime = System.nanoTime();
+      long runTime = stopTime - startTime;
       System.out.printf("Processor %d Runtime: %dms\n", myProcessorRank, convertNanoSecondsToMilliseconds(runTime));
 	}
 
@@ -72,7 +73,21 @@ public class GameOfLife {
 	   
 	   if (simulator.getProcessorRank() == 0)
 	   {
-	      List<Cell> livingCells = GameOfLifeFileIO.getLiveCells(strInputFilename, 0, 0);
+	      System.out.println("Processor: " + simulator.getProcessorRank() + " before alive");
+	      List<Cell> livingCells = GameOfLifeFileIO.getLiveCells(strInputFilename, simulator.getNumLivingCellsInFile());
+	      System.out.println("Processor: " + simulator.getProcessorRank() + " after alive");
+	      
+	      try
+	      {
+	         System.out.println("Processor: " + simulator.getProcessorRank() + " reached Barrier 0.");
+	         Comm.world().barrier();
+	      }
+	      catch (IOException e)
+	      {
+	         System.out.println("Could not handle barrier: " + e.getMessage());
+	      }
+
+         startTime = System.nanoTime();
 	      simulator.distributeDataToWorkers(livingCells);
 	   }
 	   
@@ -82,18 +97,45 @@ public class GameOfLife {
 	   
 	   else
 	   {
+	      try
+         {
+            System.out.println("Processor: " + simulator.getProcessorRank() + " reached Barrier 0.");
+            Comm.world().barrier();
+         }
+         catch (IOException e)
+         {
+            System.out.println("Could not handle barrier: " + e.getMessage());
+         }
+         
+	      startTime = System.nanoTime();
 	      simulator.receiveDataFromMaster();
 	   }
+	   
+	   
 	   
 	   //
 	   // After data has been distributed, perform the simulation.
 	   //
-	   
+	
 	   for (int i = 0; i < nNumIterationsToRun; i++)
       {
-         simulator.sendBorders();
-         simulator.receiveBorders();
+         simulator.sendLeftBorder();
+         simulator.receiveRightBorder();
+         
+         simulator.sendRightBorder();
+         simulator.receiveLeftBorder();
+         
          simulator.performSimulation();
+         
+         try
+         {
+            //System.out.println("Processor: " + simulator.getProcessorRank() + " reached Barrier " + (i + 1) + ".");
+            Comm.world().barrier();
+         }
+         catch (IOException e)
+         {
+            System.out.println("Could not handle barrier: " + e.getMessage());
+         }
       }
 	}
 
