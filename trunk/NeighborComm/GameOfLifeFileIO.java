@@ -26,104 +26,78 @@ public abstract class GameOfLifeFileIO {
 	 * 			empty in the case of an IO error
 	 */	
 	public static List<Cell> getLiveCells(
-	      String fileName,
-	      int startCellPos, 
-         int numCellsToRead) {
+	      String filename, int numLiveCells) {
 	   
-//	   List<Cell> liveCells = new ArrayList<Cell>();
-//      int x, y;
-//      
-//      try {
-//         RandomAccessFile dataFile = new RandomAccessFile(fileName, "r");
-//         dataFile.seek(startCellPos);
-//         
-//         String strLine = "";
-//         String[] aLineTokens;
-//         
-//         int nCounter = 0;
-//         while ((dataFile.getFilePointer() < dataFile.length()) && (nCounter < numCellsToRead)) 
-//         {
-//            strLine = dataFile.readLine();
-//            aLineTokens = strLine.split(" ");
-//            
-//            if ((aLineTokens.length == 2) && (aLineTokens[0] != "") && (aLineTokens[1] != ""))
-//            {
-//               try
-//               {
-//                  x = Integer.parseInt(aLineTokens[0]);
-//                  y = Integer.parseInt(aLineTokens[1]);
-//                  
-//                  liveCells.add(new Cell(x, y));
-//               }
-//               catch(NumberFormatException e)
-//               {
-//                  System.out.println("Start Cell Pos: " + startCellPos + 
-//                        " / Received Number Format Exception for Input: (" 
-//                        + aLineTokens[0] + ", " + aLineTokens[1] + ")");
-//               }
-//            }
-//            
-//            nCounter++;
-//         }
-//         
-//         dataFile.close();
-//      }
-//      catch (FileNotFoundException fnfe) {
-//         fnfe.printStackTrace();
-//      }
-//      catch (Exception e) {
-//         e.printStackTrace();
-//      }
-//      
-//      return liveCells;
+	   List<Cell> liveCells = new ArrayList<Cell>();
 	   
-		return getLiveCells(new File(fileName), startCellPos, numCellsToRead);
+	   try
+      {
+         Scanner readBuffer = new Scanner(new File(filename));
+         
+         String strLine = "";
+         String[] aLineTokens;
+         
+         for (int i = 0; i < numLiveCells; i++)
+         {
+            strLine = readBuffer.nextLine();
+            aLineTokens = strLine.split(" ");
+            
+            liveCells.add(new Cell(Integer.parseInt(aLineTokens[0]), Integer.parseInt(aLineTokens[1])));
+         }
+      }
+      catch (FileNotFoundException fnfe)
+      {
+         fnfe.printStackTrace();
+      }
+      
+      return liveCells;  
 	}
 	
-	/**
-	 * Reads in a file of live cells having the format:
-	 * 		x1 y1
-	 * 		x2 y2
-	 * 		...
-	 * 		xn yn
-	 * 		<EOF>
-	 * @param file File with input in the previously specified format.
-	 * @return A list of live cells.  Note, that this list may possibly be
-	 * 			empty in the case of an IO error
-	 */
-	public static List<Cell> getLiveCells(
-	      File file,
-	      int startCellPos, 
-         int cellsToRead) {
-		List<Cell> liveCells = new ArrayList<Cell>();
-		int x, y;
-		
-		Scanner scanner = null;
-		try {
-			scanner = new Scanner(file);
-			while (scanner.hasNextInt()) {
-				x = scanner.nextInt();
-				
-				if (scanner.hasNextInt()) {
-					y = scanner.nextInt();
-					liveCells.add(new Cell(x, y));
-				}	
-			}
-		} 
-		catch (FileNotFoundException fnfe) {
-			fnfe.printStackTrace();
-		}
-		catch (Exception e) {
-			e.printStackTrace();
-		}
-		finally {
-			if (scanner != null) {
-				scanner.close();
-			}
-		}
-		
-		return liveCells;
-	}
+//	/**
+//	 * Reads in a file of live cells having the format:
+//	 * 		x1 y1
+//	 * 		x2 y2
+//	 * 		...
+//	 * 		xn yn
+//	 * 		<EOF>
+//	 * @param file File with input in the previously specified format.
+//	 * @return A list of live cells.  Note, that this list may possibly be
+//	 * 			empty in the case of an IO error
+//	 */
+//	public static List<Cell> getLiveCells(
+//	      File file) {
+////		List<Cell> liveCells = new ArrayList<Cell>();
+////		int x, y;
+////		
+////		Scanner scanner = null;
+////		try {
+////			scanner = new Scanner(file);
+////			while (scanner.hasNextInt()) {
+////				x = scanner.nextInt();
+////				
+////				if (scanner.hasNextInt()) {
+////					y = scanner.nextInt();
+////					liveCells.add(new Cell(x, y));
+////				}	
+////			}
+////		} 
+////		catch (FileNotFoundException fnfe) {
+////			fnfe.printStackTrace();
+////		}
+////		catch (Exception e) {
+////			e.printStackTrace();
+////		}
+////		finally {
+////			if (scanner != null) {
+////				scanner.close();
+////			}
+////		}
+////		
+////		return liveCells;
+//	   
+//	   
+//	   
+//	}
 
 	/**
 	 * Outputs the specified list of live cells to the filename in the format
@@ -153,17 +127,17 @@ public abstract class GameOfLifeFileIO {
 	 * @param file Destination file for output written in the specified format.
 	 */
 	public static void writeLiveCells(List<Cell> liveCells, File file) {
-		try {
-			file.createNewFile();
-			FileWriter writer = new FileWriter(file);
-			for (Cell c : liveCells) {
-				writer.write(String.format("%s\n", c.toSuccinctString()));
-			}
-			writer.close();
-		} 
-		catch (IOException e) {
-			e.printStackTrace();
-			return;
-		}
+//		try {
+//			file.createNewFile();
+//			FileWriter writer = new FileWriter(file);
+//			for (Cell c : liveCells) {
+//				writer.write(String.format("%s\n", c.toSuccinctString()));
+//			}
+//			writer.close();
+//		} 
+//		catch (IOException e) {
+//			e.printStackTrace();
+//			return;
+//		}
 	}
 }
