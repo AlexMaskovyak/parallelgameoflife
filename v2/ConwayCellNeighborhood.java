@@ -80,7 +80,7 @@ public class ConwayCellNeighborhood implements CellNeighborhood {
 				
 				// if bounds checking is on, make sure we're within the game
 				// world, skip if we're outside
-				if (this.isResident(temp)) {
+				if (!this.isResident(temp)) {
 					// throw it away
 					continue;
 				}

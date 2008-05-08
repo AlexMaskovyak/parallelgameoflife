@@ -78,7 +78,7 @@ public class SequentialGameOfLifeSimulator implements GameOfLifeSimulator {
 		
 		// Neighbor creation and neighbor counting
 		this.updateCellCounts();
-		
+
 		// Killing and birthing cells area
 		this.updateLiveCellList();
 	}
