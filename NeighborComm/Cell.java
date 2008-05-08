@@ -41,19 +41,5 @@ public class Cell implements java.io.Serializable {
 		return (HASHFACTOR * this.x) + this.y;
 	}
 	
-	/**
-	 * Override Java's default string code.  Useful for debugging.
-	 */
-	public String toString() {
-		return String.format("Cell at: (%s)", this.toSuccinctString());
-	}
-	
-	/**
-	 * Succinct form of writing the cell's information. Useful for outputting
-	 * to a file.
-	 * @return Returns the cell's string information.
-	 */
-	public String toSuccinctString() {
-		return String.format("%d %d", this.x, this.y);
-	}
+
 }
