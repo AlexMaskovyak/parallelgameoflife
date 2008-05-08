@@ -51,6 +51,7 @@ public class NeighborCommGameOfLifeSimulator implements GameOfLifeSimulator {
    private int largestSliceToReceive;
    private int leftBorderYBound;
    private int rightBorderYBound;
+   private int currentIteration;
    
    public static final int LEFT_BORDER_TAG = 0;
    public static final int RIGHT_BORDER_TAG = 1;
@@ -98,9 +99,10 @@ public class NeighborCommGameOfLifeSimulator implements GameOfLifeSimulator {
       this.numLivingCellsInFile = numLivingCellsInFile;
       this.myProcessorRank = myProcessorRank;
       this.numProcessors = numProcessors;
-      this.largestSliceToReceive = (this.neighborhood.xMaxBounds * this.neighborhood.yMaxBounds) / this.numProcessors;
+      this.largestSliceToReceive = (this.neighborhood.xMaxBounds * this.neighborhood.yMaxBounds);
       this.leftBorderYBound = 100000000;
       this.rightBorderYBound = 0;
+      this.currentIteration = 0;
       
       if (this.myProcessorRank - 1 == -1)
       {
@@ -146,7 +148,7 @@ public class NeighborCommGameOfLifeSimulator implements GameOfLifeSimulator {
       
       for (int nDestProcessorRank = 1; nDestProcessorRank < this.numProcessors; nDestProcessorRank++) {
          try {
-            Comm.world().send(nDestProcessorRank, livingCellSlices[nDestProcessorRank], request);
+            Comm.world().send(nDestProcessorRank, livingCellSlices[nDestProcessorRank]);
             
             //
             // Add First Slice to Master's Simulation Hash Map so that it
@@ -197,7 +199,7 @@ public class NeighborCommGameOfLifeSimulator implements GameOfLifeSimulator {
       try
       {
          receiveStatus = Comm.world().receive(0, livingCellsToReceive);
-         //System.out.println("Processor: " + this.myProcessorRank + " received data of size " + receiveStatus.length);
+         System.out.println("Processor: " + this.myProcessorRank + " received data of size " + receiveStatus.length);
          
          //
          // Parse the buffer and insert the cells into a local Hash Map
@@ -233,7 +235,7 @@ public class NeighborCommGameOfLifeSimulator implements GameOfLifeSimulator {
     * At each iteration, the Worker Processor will send its 'Border' Cells
     * to its designated neighbors.
     */
-   public void sendBorders()
+   public void sendLeftBorder()
    {
       //
       // Create left and right borders to send. Since the leftmost and
@@ -242,9 +244,8 @@ public class NeighborCommGameOfLifeSimulator implements GameOfLifeSimulator {
       //
       
       int nLeftBorderCounter = 0;
-      int nRightBorderCounter = 0;
-      
       Iterator<Cell> livingCellIterator = livingCells.keySet().iterator();
+      
       while(livingCellIterator.hasNext()) 
       {
          Cell currentCell = livingCellIterator.next();
@@ -254,18 +255,10 @@ public class NeighborCommGameOfLifeSimulator implements GameOfLifeSimulator {
          {
             nLeftBorderCounter++;
          }
-         else if ((currentCell.y == this.rightBorderYBound) || 
-               (currentCell.y == this.rightBorderYBound - 1))
-         {
-            nRightBorderCounter++;
-         }
       }
       
       Cell[] livingLeftBorderCellHolder = new Cell[nLeftBorderCounter];
-      Cell[] livingRightBorderCellHolder = new Cell[nRightBorderCounter];
-      
       nLeftBorderCounter = 0;
-      nRightBorderCounter = 0;
       
       Iterator<Cell> livingCellIterator2 = livingCells.keySet().iterator();
       while(livingCellIterator2.hasNext()) 
@@ -277,12 +270,6 @@ public class NeighborCommGameOfLifeSimulator implements GameOfLifeSimulator {
          {
             livingLeftBorderCellHolder[nLeftBorderCounter] = currentCell;
             nLeftBorderCounter++;
-         }
-         else if ((currentCell.y == this.rightBorderYBound) || 
-               (currentCell.y == this.rightBorderYBound - 1))
-         {
-            livingRightBorderCellHolder[nRightBorderCounter] = currentCell;
-            nRightBorderCounter++;
          }
       }
       
@@ -311,6 +298,52 @@ public class NeighborCommGameOfLifeSimulator implements GameOfLifeSimulator {
                   "send Left Border to Processor: " + this.leftProcessorRank);
          }
       }
+   }
+   
+   /**
+    * At each iteration, the Worker Processor will send its 'Border' Cells
+    * to its designated neighbors.
+    */
+   public void sendRightBorder()
+   {
+      //
+      // Create left and right borders to send. Since the leftmost and
+      // or rightmost border values may be the same as in other processors,
+      // create a (+/- 1) buffer for determining them.
+      //
+      
+      int nRightBorderCounter = 0;
+      Iterator<Cell> livingCellIterator = livingCells.keySet().iterator();
+      
+      while(livingCellIterator.hasNext()) 
+      {
+         Cell currentCell = livingCellIterator.next();
+         
+         if ((currentCell.y == this.rightBorderYBound) || 
+               (currentCell.y == this.rightBorderYBound - 1))
+         {
+            nRightBorderCounter++;
+         }
+      }
+      
+      Cell[] livingRightBorderCellHolder = new Cell[nRightBorderCounter];
+      nRightBorderCounter = 0;
+      
+      Iterator<Cell> livingCellIterator2 = livingCells.keySet().iterator();
+      while(livingCellIterator2.hasNext()) 
+      {
+         Cell currentCell  = livingCellIterator2.next();
+         if ((currentCell.y == this.rightBorderYBound) || 
+               (currentCell.y == this.rightBorderYBound - 1))
+         {
+            livingRightBorderCellHolder[nRightBorderCounter] = currentCell;
+            nRightBorderCounter++;
+         }
+      }
+      
+      //
+      // Send the Buffers to Neighboring Processors
+      //
       
       if (this.rightProcessorRank != -1)
       {
@@ -331,9 +364,10 @@ public class NeighborCommGameOfLifeSimulator implements GameOfLifeSimulator {
          {
             System.out.println("Processor: " + this.myProcessorRank + " could not " + 
                   "send Right Border to Processor: " + this.rightProcessorRank);
-            }
+         }
       }
    }
+
    
    /**
     * At each iteration, the Worker Processor will receive its Border Cells
@@ -343,7 +377,7 @@ public class NeighborCommGameOfLifeSimulator implements GameOfLifeSimulator {
     * their Left Neighbors and Left Borders from their Right Neighbors.
     */
    
-   public void receiveBorders()
+   public void receiveLeftBorder()
    {
       if (this.leftProcessorRank != -1)
       {
@@ -367,7 +401,9 @@ public class NeighborCommGameOfLifeSimulator implements GameOfLifeSimulator {
                   RIGHT_BORDER_TAG, 
                   livingBorderCellsToReceive);
             
-            //System.out.println("BORDER: Processor: " + this.myProcessorRank + " received data of size " + receiveStatus.length);
+            System.out.println("Iteration " + this.currentIteration + ": Processor: " + 
+                  this.myProcessorRank + " received data of size " + receiveStatus.length + " AND LARGE SLICE IS: " + 
+                  this.largestSliceToReceive);
             
             //
             // Parse the buffer and insert the cells into a local Hash Map
@@ -391,6 +427,18 @@ public class NeighborCommGameOfLifeSimulator implements GameOfLifeSimulator {
          }
       }
       
+   }
+   
+   /**
+    * At each iteration, the Worker Processor will receive its Border Cells
+    * from its designated neighbors. 
+    * 
+    * NOTE: When receiving, Worker Processors will receive Right Borders from 
+    * their Left Neighbors and Left Borders from their Right Neighbors.
+    */
+   
+   public void receiveRightBorder()
+   {
       if (this.rightProcessorRank != -1)
       {
          //
@@ -413,7 +461,9 @@ public class NeighborCommGameOfLifeSimulator implements GameOfLifeSimulator {
                   LEFT_BORDER_TAG, 
                   livingBorderCellsToReceive);
             
-            //System.out.println("BORDER: Processor: " + this.myProcessorRank + " received data of size " + receiveStatus.length);
+            System.out.println("Iteration " + this.currentIteration + ": Processor: " + 
+                  this.myProcessorRank + " received data of size " + receiveStatus.length + 
+                  " AND LARGE SLICE IS: " + this.largestSliceToReceive);
             
             //
             // Parse the buffer and insert the cells into a local Hash Map
@@ -524,6 +574,8 @@ public class NeighborCommGameOfLifeSimulator implements GameOfLifeSimulator {
             this.livingCells.put(gestatingCell, gestatingCell);
          }
       }
+      
+      currentIteration++;
    }
    
    /* (non-Javadoc)
