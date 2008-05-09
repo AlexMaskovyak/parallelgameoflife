@@ -1,0 +1,3 @@
+/usr/local/versions/jdk-1.5.0_15/bin/javac ParallelProject/*.java
+java -Dpj.np=4 ParallelGameOfLife 10 10 50 10 Parallel_Input_1.txt
+
