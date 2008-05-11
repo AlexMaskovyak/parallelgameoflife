@@ -20,7 +20,6 @@ public class CellFileReader {
 	public static ArrayList readFile( String inputFilename ){
 		
 		ArrayList CellList = null;
-		
 		try {
 			ObjectInputStream inObject = new ObjectInputStream( 
 					new FileInputStream( inputFilename ) );
@@ -33,7 +32,6 @@ public class CellFileReader {
 		catch (ClassNotFoundException ex) {
 			ex.printStackTrace();
 		}
-		
 		return CellList;
 	}
 }
