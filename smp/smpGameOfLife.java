@@ -2,7 +2,8 @@ import edu.rit.pj.Comm;
 import edu.rit.pj.ParallelTeam;
 import edu.rit.pj.ParallelRegion;
 import edu.rit.pj.IntegerForLoop;
-import java.util.Scanner;
+import edu.rit.pj.BarrierAction;
+import java.util.List;
 
 /**
  *	Game of Life for SMP machine
@@ -14,6 +15,7 @@ public class smpGameOfLife {
 	static CellLifeRules rules = new ConwayCellLifeRules();
 	static boolean board[][];
 	static boolean tempBoard[][];
+	static List CellList;
 
 	/**
 	 * Returns the number of live neighbors
@@ -46,25 +48,6 @@ public class smpGameOfLife {
 		return countLive;
 	}
 	
-		/**
-	 * Copys one boolean matrix to another of the same size
-	 * @param copyFrom	The source matrix
-	 * @param copyTo	The destination matrix
-	 * @return 			True if any cells changed state
-	 */
-/*	private static boolean copyBoard( boolean[][] copyFrom, boolean[][] copyTo ){
-		boolean changed = true;
-		for ( int r=0; r < copyFrom.length; r++ ){
-			for ( int c=0; c < copyFrom[0].length; c++ ){
-				if (copyTo[r][c] != copyFrom[r][c]) {
-					changed = true;
-					copyTo[r][c] = copyFrom[r][c];
-				}
-			}
-		}
-		return changed;
-	}*/
-	
 	private static void displayBoard( boolean[][] board ){
 		for (int c=0; c<board[0].length+2; c++ ){
 			System.out.print("-");
@@ -89,70 +72,110 @@ public class smpGameOfLife {
 		System.out.println();
 	}
 	
+	private static int max( int a, int b ){
+		if ( a > b ){
+			return a;
+		} else {
+			return b;
+		}
+	}
+	
 	public static void main(String[] args) throws Exception {
 
-		//Comm.init (args);
-		Scanner sc = new Scanner(System.in);
+		CellList = CellFileReader.readFile( args[0] );
 
-		//read board size from standard input
-		int boardRows = sc.nextInt();
-		int boardCols = sc.nextInt();
+		//find max board size
+		int rows = 0;
+		int cols = 0;
 		
-		board = new boolean[boardRows][boardCols];
-		tempBoard = new boolean[boardRows][boardCols];
-
-		//initalize board to all dead cells
-		for (int r=0; r<boardRows; r++ ){
-			for (int c=0; c<boardCols; c++ ){
-				board[r][c] = false;
-				tempBoard[r][c]=false;
-			}
+		Cell ThisCell;
+		for ( Object ThisObj : CellList ){
+			ThisCell = (Cell)ThisObj;
+			rows = max( rows, ThisCell.x );
+			cols = max( cols, ThisCell.y );
 		}
 		
-		//read alive cells from standard input
-		int numAliveCells, row, col;
-		numAliveCells = sc.nextInt();
-		
-		for (int i=0; i<numAliveCells; i++ ){
-			row = sc.nextInt();
-			col = sc.nextInt();
-			board[row][col] = true;
-			tempBoard[row][col]=true;
-		}
-		sc.close();
+		board = new boolean[rows + 1][cols + 1];
+		tempBoard = new boolean[rows + 1][cols + 1];
 
-		//display initial board setup
-		System.out.println("Initial Board Configuration:");
-		displayBoard(board);
-		
 		//create ParallelTeam with anonymous inner class ParallelRegion
 		new ParallelTeam().execute (new ParallelRegion(){
 
 			public void run() throws Exception{
 				
 				int cycle = 0;
-				do {
-					execute (0, board.length-1, new IntegerForLoop(){
+				
+				//setup intial board configuration 
+				//set all cells to false in parallel
+				execute( 0, board.length - 1, 
+					new IntegerForLoop(){
 						public void run( int firstRow, int lastRow ){
 							for (int r = firstRow; r<= lastRow; r++){
-								for (int c = 0; c < board[0].length; c++){
-									tempBoard[r][c] = rules.nextState( board[r][c], 
-											numLiveNeighbors( board, r, c ));
+								for ( int c = 0; c < board[0].length; c++ ){
+									board[r][c] = false;
+									tempBoard[r][c] = false;
 								}
 							}
 						}
-					}); //end execute
+					}
+				);
+				
+				//read in alive cells from CellsList in parallel
+				execute( 0, CellList.size() - 1, 
+					new IntegerForLoop(){
+						public void run( int startIndex, int endIndex ){
+							int r, c;
+							Cell NextCell;
+							for (int i = startIndex; i <= endIndex; i++){
+								NextCell = (Cell)CellList.get( i );
+								r = NextCell.x;
+								c = NextCell.y;
+								board[r][c] = true;
+								tempBoard[r][c] = true;
+							}
+						}
+					},
+				
+					//one thread
+					new BarrierAction(){
+						public void run() throws Exception {
+							CellList.clear();
+							
+							//display initial board setup
+							System.out.println("Initial Board Configuration:");
+							displayBoard(board);
+							
+						}
+					}
+				);
+				
+				
+				do {
+					execute( 0, board.length - 1, 
+						new IntegerForLoop(){
+							public void run( int firstRow, int lastRow ){
+								for (int r = firstRow; r<= lastRow; r++){
+									for (int c = 0; c < board[0].length; c++){
+										tempBoard[r][c] = rules.nextState( board[r][c], 
+												numLiveNeighbors( board, r, c ));
+									}
+								}
+							}
+						}
+					); //end execute
 					
 					//Copy tempBoard to board
-					execute (0, board.length-1, new IntegerForLoop(){
-						public void run( int firstRow, int lastRow ){
-							for (int r = firstRow; r<= lastRow; r++){
-								for (int c = 0; c < board[0].length; c++){
-									board[r][c] = tempBoard[r][c];
+					execute (0, board.length -1, 
+						new IntegerForLoop(){
+							public void run( int firstRow, int lastRow ){
+								for (int r = firstRow; r<= lastRow; r++){
+									for (int c = 0; c < board[0].length; c++){
+										board[r][c] = tempBoard[r][c];
+									}
 								}
 							}
 						}
-					}); //end execute
+					); //end execute
 					
 				} while ( cycle++ < maxIterations );
 				//Note: copy board compares every cell. Optimize this to compare only changed cells.
