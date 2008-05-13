@@ -4,6 +4,7 @@ import edu.rit.pj.ParallelRegion;
 import edu.rit.pj.IntegerForLoop;
 import edu.rit.pj.BarrierAction;
 import java.util.List;
+import java.util.ArrayList;
 
 /**
  *	Game of Life for SMP machine
@@ -14,9 +15,12 @@ public class smpGameOfLife {
 	static int maxIterations = 1000;
 	static CellLifeRules rules = new ConwayCellLifeRules();
 	static boolean board[][];
-	static boolean tempBoard[][];
-	static List CellList;
-
+	static ArrayList CellList;
+	static boolean changed;
+	static int cycle;
+	static List<Cell> Births;
+	static List<Cell> Deaths;
+	
 	/**
 	 * Returns the number of live neighbors
 	 * @param board		2D array of booleans corresponding to alive rows
@@ -96,14 +100,14 @@ public class smpGameOfLife {
 		}
 		
 		board = new boolean[rows + 1][cols + 1];
-		tempBoard = new boolean[rows + 1][cols + 1];
-
+		Births = new ArrayList<Cell>();
+		Deaths = new ArrayList<Cell>();
+		cycle = 0;
+		
 		//create ParallelTeam with anonymous inner class ParallelRegion
 		new ParallelTeam().execute (new ParallelRegion(){
-
+			
 			public void run() throws Exception{
-				
-				int cycle = 0;
 				
 				//setup intial board configuration 
 				//set all cells to false in parallel
@@ -113,7 +117,6 @@ public class smpGameOfLife {
 							for (int r = firstRow; r<= lastRow; r++){
 								for ( int c = 0; c < board[0].length; c++ ){
 									board[r][c] = false;
-									tempBoard[r][c] = false;
 								}
 							}
 						}
@@ -131,7 +134,6 @@ public class smpGameOfLife {
 								r = NextCell.x;
 								c = NextCell.y;
 								board[r][c] = true;
-								tempBoard[r][c] = true;
 							}
 						}
 					},
@@ -148,42 +150,89 @@ public class smpGameOfLife {
 					}
 				);
 				
-				
 				do {
+					//Changed.set( false );
+					changed = false;
 					execute( 0, board.length - 1, 
 						new IntegerForLoop(){
+							boolean threadChanged = false;
 							public void run( int firstRow, int lastRow ){
 								for (int r = firstRow; r<= lastRow; r++){
 									for (int c = 0; c < board[0].length; c++){
-										tempBoard[r][c] = rules.nextState( board[r][c], 
-												numLiveNeighbors( board, r, c ));
+										
+										if ( board[r][c] ){
+											if ( rules.dies(numLiveNeighbors( board, r, c ))){
+												Deaths.add(new Cell(r,c));
+												threadChanged = true;
+											}
+										} else {
+											if ( rules.isBorn(numLiveNeighbors( board, r, c ))){
+												Births.add(new Cell(r,c));
+												threadChanged = true;
+											}
+										}
 									}
 								}
+							}
+							public void finish(){
+								if (threadChanged ){
+									changed = true;
+								}
+							}
+						},
+						new BarrierAction() {
+							public void run() throws Exception{
+								cycle++;
 							}
 						}
 					); //end execute
 					
-					//Copy tempBoard to board
-					execute (0, board.length -1, 
+					
+					//Birth new Cells
+					execute (0, Births.size() -1, 
 						new IntegerForLoop(){
-							public void run( int firstRow, int lastRow ){
-								for (int r = firstRow; r<= lastRow; r++){
-									for (int c = 0; c < board[0].length; c++){
-										board[r][c] = tempBoard[r][c];
-									}
+							public void run( int firstCell, int lastCell){
+								Cell TempCell;
+								for (int i=firstCell; i<=lastCell; i++){
+									TempCell=Births.get(i);
+									board[TempCell.x][TempCell.y]=true;
 								}
+							}
+						},
+						new BarrierAction() {
+							public void run() throws Exception{
+								Births.clear();
+							}
+						}
+					);
+					
+					//kill dead cells
+					execute (0, Deaths.size() - 1,
+						new IntegerForLoop(){
+							public void run( int firstCell, int lastCell){
+								Cell TempCell;
+								for (int i=firstCell; i<=lastCell; i++){
+									TempCell = Deaths.get(i);
+									board[TempCell.x][TempCell.y]=false;
+								}
+							}
+						},
+						new BarrierAction() {
+							public void run() throws Exception{
+								Deaths.clear();
+								cycle++;
+								//System.out.println(cycle);
 							}
 						}
 					); //end execute
-					
-				} while ( cycle++ < maxIterations );
-				//Note: copy board compares every cell. Optimize this to compare only changed cells.
+
+				} while ( cycle < maxIterations /* && changed */);
 			}	
 
 		});		//end ParallelTeam().execute
 		
 		//display final board configuration
-		System.out.println("Final Board Configuration:");
+		System.out.println("Final Board Configuration (" + cycle + " iterations)...");
 		displayBoard(board);
 	}
 }
