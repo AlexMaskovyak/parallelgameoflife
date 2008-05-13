@@ -27,7 +27,11 @@ public class smpGameOfLife_Hash_Serial{
 		for ( int i=x-1; i<=x+1; i++ ){
 		for ( int j=y-1; j<=y+1; j++ ){
 			TallyCell = new Cell( i, j );
-			if ( ! (i==x && j==y) ){
+			if ( (i==x && j==y) ){
+				if (!NeighborCount.containsKey( TallyCell )){
+					NeighborCount.put( TallyCell, 0 );
+				}
+			} else {
 				if ( NeighborCount.containsKey( TallyCell ) ){
 					NeighborCount.put( TallyCell, NeighborCount.get( TallyCell ) + increase);
 				} else {
@@ -101,15 +105,17 @@ public class smpGameOfLife_Hash_Serial{
 
 	public static void main( String args[] ){
 		
-		List<Cell> CellList = CellFileReader.readFile( args[0] );
+		ArrayList CellList = CellFileReader.readFile( args[0] );
 		LiveCells = new HashSet<Cell>( CellList.size() );		
 		NeighborCount = new HashMap<Cell,Integer>( CellList.size() );
 
-		for (Cell c: CellList){
-			LiveCells.add( c );
+		Cell ThisCell;
+		for (Object c: CellList){
+			ThisCell = (Cell)c;
+			LiveCells.add( ThisCell );
 					
 			//update NeighborCounts
-			TallyNeighbors( c.x, c.y, 1 );
+			TallyNeighbors( ThisCell.x, ThisCell.y, 1 );
 		}
 
 		CellList.clear();
