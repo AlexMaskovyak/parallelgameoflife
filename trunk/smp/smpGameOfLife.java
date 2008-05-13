@@ -144,7 +144,6 @@ public class smpGameOfLife {
 							//display initial board setup
 							System.out.println("Initial Board Configuration:");
 							displayBoard(board);
-							
 						}
 					}
 				);

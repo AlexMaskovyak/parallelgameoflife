@@ -22,6 +22,10 @@ public abstract class CellLifeRules {
 	 */
 	public abstract boolean lives(int liveNeighbors);
 
+	public boolean dies( int liveNeighbors ){
+		return !lives( liveNeighbors );
+	}
+	
 	public boolean nextState(boolean startsAlive, int liveNeighbors){
 		if ( startsAlive ){
 			return lives( liveNeighbors );
