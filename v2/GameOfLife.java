@@ -67,7 +67,7 @@ public class GameOfLife {
 		
 		
 		System.out.printf("%d cells alive\n", simulator.getLivingCellCount());
-		for (int i = 0; i < 1; ++i) {
+		for (int i = 0; i < iterationsToRun; ++i) {
 			simulator.performSimulation();
 			//System.out.printf("Iteration %d, %d cells alive\n", i, simulator.getLivingCellCount());
 			System.out.printf("Iteration %d, %d: %s cells alive\n", i, commWorld.rank(), simulator.getLivingCellCount());

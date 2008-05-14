@@ -51,7 +51,8 @@ public class NeighborCommGameOfLifeSimulator extends SequentialGameOfLifeSimulat
 
 	// control message passing size
 	protected int largestSliceToReceive;
-
+	protected CommStatus receiveStatus;
+	
    
 	
 	/**
@@ -154,11 +155,10 @@ public class NeighborCommGameOfLifeSimulator extends SequentialGameOfLifeSimulat
 		//
 
 		ObjectBuf<Cell> livingCellsToReceive = ObjectBuf.buffer(receiveCellBuffer);
-		CommStatus receiveStatus = null;
+		this.receiveStatus = null;
       
 		try {
-			System.out.println("Receiving");
-			receiveStatus = this.commWorld.receive(0, livingCellsToReceive);
+			this.receiveStatus = this.commWorld.receive(0, livingCellsToReceive);
 			//System.out.println("Processor: " + this.myProcessorRank + " received data of size " + receiveStatus.length);
          
 			//
@@ -169,7 +169,7 @@ public class NeighborCommGameOfLifeSimulator extends SequentialGameOfLifeSimulat
          
 			List<Cell> livingCells = new ArrayList<Cell>();
 			
-			for (int i = 0; i < receiveStatus.length; i++) {
+			for (int i = 0; i < this.receiveStatus.length; i++) {
 				Cell currentCell = livingCellsToReceive.get(i);
 				this.updateBorderBounds(currentCell);
 				this.addLivingCell(currentCell);
@@ -185,13 +185,11 @@ public class NeighborCommGameOfLifeSimulator extends SequentialGameOfLifeSimulat
 	 * provided tag.
 	 * @param neighborRank Neighbor from which to receive cells.
 	 * @param tag Non-zero rank of neighbor from which to receive.
-	 * @param receiveStatus Commstatus to store message from receive operation.
 	 * @return Living cells from the provided neighbor.
 	 */
 	protected ObjectBuf<Cell> receiveLiveCells(
 			int neighborRank, 
-			int tag, 
-			CommStatus receiveStatus) 
+			int tag) 
 	{
 		// fail fast
 		if (neighborRank == this.NON_NEIGHBOR) {
@@ -202,13 +200,14 @@ public class NeighborCommGameOfLifeSimulator extends SequentialGameOfLifeSimulat
 		Cell[] receiveCellBuffer = new Cell[this.largestSliceToReceive];
 			
 		ObjectBuf<Cell> livingCellsToReceive = ObjectBuf.buffer(receiveCellBuffer);
-		receiveStatus = null;
-			
+		this.receiveStatus = null;
+		
 		try {
-			receiveStatus = this.commWorld.receive(
+			this.receiveStatus = this.commWorld.receive(
 					neighborRank, 
 					tag,
 					livingCellsToReceive);
+			System.out.println(this.receiveStatus.length);
 		}
 		catch (Exception e) {
             System.out.printf(
@@ -264,10 +263,11 @@ public class NeighborCommGameOfLifeSimulator extends SequentialGameOfLifeSimulat
 		// send our left border, receive someone else's left border
 		this.sendLiveCells(this.leftProcessorRank, LEFT_BORDER_TAG, this.leftBorder);
 		
-		CommStatus receiveStatus = null;
-		ObjectBuf<Cell> borderCells = this.receiveLiveCells(this.rightProcessorRank, LEFT_BORDER_TAG, receiveStatus);
+		this.receiveStatus = null;
+		ObjectBuf<Cell> borderCells = this.receiveLiveCells(this.rightProcessorRank, LEFT_BORDER_TAG);
 
-        for (int i = 0; i < receiveStatus.length; i++) {
+		
+        for (int i = 0; this.receiveStatus != null && i < this.receiveStatus.length; i++) {
         	Cell currentCell = borderCells.get(i);
             if (currentCell != null) {
             	this.borderCells.put(currentCell, currentCell);
@@ -278,10 +278,10 @@ public class NeighborCommGameOfLifeSimulator extends SequentialGameOfLifeSimulat
         // our right border, receive someone else's right border
         this.sendLiveCells(this.rightProcessorRank, RIGHT_BORDER_TAG, this.rightBorder);
         
-        receiveStatus = null;
-        borderCells = this.receiveLiveCells(this.leftProcessorRank, RIGHT_BORDER_TAG, receiveStatus);
+        this.receiveStatus = null;
+        borderCells = this.receiveLiveCells(this.leftProcessorRank, RIGHT_BORDER_TAG);
         
-        for (int i = 0; i < receiveStatus.length; i++) {
+        for (int i = 0; this.receiveStatus != null && i < this.receiveStatus.length; i++) {
         	Cell currentCell = borderCells.get(i);
             if (currentCell != null) {
             	this.borderCells.put(currentCell, currentCell);
