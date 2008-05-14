@@ -4,17 +4,12 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Set;
-import java.util.Collections;
-import java.util.Iterator;
 
-import edu.rit.mp.BooleanBuf;
 import edu.rit.pj.CommRequest;
 import edu.rit.pj.CommStatus;
 import edu.rit.util.Range;
 import edu.rit.pj.Comm;
 import edu.rit.mp.ObjectBuf;
-import edu.rit.mp.IntegerBuf;
-import edu.rit.util.Arrays;
 
 
 /**
@@ -31,6 +26,7 @@ public class NeighborCommGameOfLifeSimulator extends SequentialGameOfLifeSimulat
 	
 	// constants
 	protected static final int MASTERRANK = 0;
+	protected static final int NON_NEIGHBOR = -1;
 
 	protected Comm commWorld;
 	protected int numProcessors;
@@ -57,7 +53,6 @@ public class NeighborCommGameOfLifeSimulator extends SequentialGameOfLifeSimulat
 	protected int largestSliceToReceive;
 
    
-
 	
 	/**
 	 * Constructor.
@@ -75,15 +70,11 @@ public class NeighborCommGameOfLifeSimulator extends SequentialGameOfLifeSimulat
 		super(new ArrayList<Cell>(), rules, neighborhood);
 
 		
-//		System.out.println("Done superconstructing.");
-		
 		// set communication values
 		this.commWorld = commWorld;
 		this.processorRank = this.commWorld.rank();
 		this.numProcessors = this.commWorld.size();
 		this.numberOfWorkers -= 1;
-		
-//		System.out.println("Done with commworld");
 
 		
 		// set border stores
@@ -91,8 +82,6 @@ public class NeighborCommGameOfLifeSimulator extends SequentialGameOfLifeSimulat
 		this.leftBorder = new ArrayList<Cell>(this.largestSliceToReceive);
 		this.rightBorder = new ArrayList<Cell>(this.largestSliceToReceive);
 
-//		System.out.println("Done with border storage");
-		
 		// set border information
 		this.leftBorderYBound = Integer.MAX_VALUE;
 		this.rightBorderYBound = Integer.MIN_VALUE;
@@ -101,17 +90,12 @@ public class NeighborCommGameOfLifeSimulator extends SequentialGameOfLifeSimulat
 		this.largestSliceToReceive = 
 			((int)this.neighborhood.getBounds().getMaxX() * (int)this.neighborhood.getBounds().getMaxY()) / this.numProcessors;
       
-//		System.out.println("Done calculating largest slice");
-		
 		// determine neighbor ranks
 		this.assignNeighborBorderIDs();
 
-//		System.out.printf("%d Going to start distribution\n", this.processorRank);
-		
 		// distribute information
 		if (this.processorRank == this.MASTERRANK) {
 			List<Cell> livingCells = GameOfLifeFileIO.getLiveCells(cellsFile);
-//			System.out.printf("Master just got the living cells : %d\n", livingCells.size());
 			this.distributeDataToWorkers(livingCells);
 		}
 		else {
@@ -126,7 +110,6 @@ public class NeighborCommGameOfLifeSimulator extends SequentialGameOfLifeSimulat
 	 * @param livingCells List of cells to distribute.
 	 */
 	public void distributeDataToWorkers(List<Cell> livingCells) {
-		System.out.println("Sending to workers");
 		Range[] colRanges = new Range(0, livingCells.size()-1).subranges(this.numProcessors);
 		Cell[] livingCellHolder = livingCells.toArray(new Cell[livingCells.size()]);
             
@@ -149,12 +132,9 @@ public class NeighborCommGameOfLifeSimulator extends SequentialGameOfLifeSimulat
     
 	   for (int i = 0, length = livingCellSlices[this.MASTERRANK].length(); i < length; ++i) {
 		   Cell c = livingCellSlices[this.MASTERRANK].get(i);
-//		   System.out.printf("Master getting %s\n", c);
 		   this.updateBorderBounds(c);
 		   this.addLivingCell(c);
 	   }
-	   
-	   System.out.printf("Master has %d cells\n", this.getLivingCellCount());
 	}
    
    /**
@@ -177,7 +157,7 @@ public class NeighborCommGameOfLifeSimulator extends SequentialGameOfLifeSimulat
 		CommStatus receiveStatus = null;
       
 		try {
-			System.out.println("REceiving");
+			System.out.println("Receiving");
 			receiveStatus = this.commWorld.receive(0, livingCellsToReceive);
 			//System.out.println("Processor: " + this.myProcessorRank + " received data of size " + receiveStatus.length);
          
@@ -191,260 +171,128 @@ public class NeighborCommGameOfLifeSimulator extends SequentialGameOfLifeSimulat
 			
 			for (int i = 0; i < receiveStatus.length; i++) {
 				Cell currentCell = livingCellsToReceive.get(i);
-//				System.out.printf("%d getting cell %s\n", this.processorRank, currentCell);
 				this.updateBorderBounds(currentCell);
 				this.addLivingCell(currentCell);
 			}
 			
-//			System.out.printf("%d has this many live cells: %d\n", this.processorRank, super.getLivingCellCount());
 		}
 		catch (IOException e) {
 			System.out.println("Processor: " + this.processorRank + " could not receive data");
 		}
 	}
-   
 	/**
-	 * At each iteration, the Worker Processor will send its 'Border' Cells
-	 * to its designated neighbors.
+	 * Retrieves a buffer of live cells from the specified neighbor using the 
+	 * provided tag.
+	 * @param neighborRank Neighbor from which to receive cells.
+	 * @param tag Non-zero rank of neighbor from which to receive.
+	 * @param receiveStatus Commstatus to store message from receive operation.
+	 * @return Living cells from the provided neighbor.
 	 */
-	public void sendBorders() {
-		this.updateBorderCellLists();
+	protected ObjectBuf<Cell> receiveLiveCells(
+			int neighborRank, 
+			int tag, 
+			CommStatus receiveStatus) 
+	{
+		// fail fast
+		if (neighborRank == this.NON_NEIGHBOR) {
+			return null;
+		}
 		
-		Cell[] livingLeftBorderCellHolder = this.leftBorder.toArray(new Cell[this.leftBorder.size()]);
-		Cell[] livingRightBorderCellHolder = this.rightBorder.toArray(new Cell[this.rightBorder.size()]);
-      
-		//
-		// Send the Buffers to Neighboring Processors
-		//
-      
-//		for (Cell c : livingLeftBorderCellHolder ) {
-//			System.out.printf("%d left border : %s\n", this.processorRank, c);
-//		}
-//		for (Cell c : livingRightBorderCellHolder) {
-//			System.out.printf("%d right border : %s\n", this.processorRank, c);			
-//		}
-		
-		if (this.leftProcessorRank != -1) {
-			System.out.printf("%d sending to left processor: %d\n", this.processorRank, this.leftProcessorRank);
-			ObjectBuf<Cell> livingBorderCellSlices = ObjectBuf.buffer(livingLeftBorderCellHolder);
-			CommRequest request = new CommRequest();
-         
+		// allocate for the largest possible slice
+		Cell[] receiveCellBuffer = new Cell[this.largestSliceToReceive];
 			
+		ObjectBuf<Cell> livingCellsToReceive = ObjectBuf.buffer(receiveCellBuffer);
+		receiveStatus = null;
 			
-			try {
-				this.commWorld.send(
-						this.leftProcessorRank, 
-						LEFT_BORDER_TAG, 
-						livingBorderCellSlices,
-						request);
-            
-				//System.out.println("Processor " + this.myProcessorRank + " SENT TO LEFT: " + this.leftProcessorRank);
-			}
-			catch (IOException e) {
-				System.out.println("Processor: " + this.processorRank + " could not " + 
-						"send Left Border to Processor: " + this.leftProcessorRank);
-			}
+		try {
+			receiveStatus = this.commWorld.receive(
+					neighborRank, 
+					tag,
+					livingCellsToReceive);
 		}
-      
-		if (this.rightProcessorRank != -1) {
-			System.out.printf("%d sending to right processor: %d\n", this.processorRank, this.rightProcessorRank);
-			ObjectBuf<Cell> livingBorderCellSlices = ObjectBuf.buffer(livingRightBorderCellHolder);
-			CommRequest request = new CommRequest();
-         
-			try {
-				this.commWorld.send(
-						this.rightProcessorRank, 
-						RIGHT_BORDER_TAG, 
-						livingBorderCellSlices,
-						request);
-            
-				//System.out.println("Processor " + this.myProcessorRank + " SENT TO RIGHT: " + this.rightProcessorRank);
-			}
-			catch (IOException e) {
-				System.out.println("Processor: " + this.processorRank + " could not " + 
-                  "send Right Border to Processor: " + this.rightProcessorRank);
-            }
-		}
-	}
-   
-	/**
-	 * At each iteration, the Worker Processor will receive its Border Cells
-	 * from its designated neighbors. 
-	 * 
-	 * NOTE: When receiving, Worker Processors will receive Right Borders from 
-	 * their Left Neighbors and Left Borders from their Right Neighbors.
-	 */ 
-	public void receiveBorders() {
-		if (this.rightProcessorRank != -1) {
-			System.out.printf("%d receiving from right processor: %d\n", this.processorRank, this.rightProcessorRank);
-
-			//
-			// Only allocate for the largest possible slice.
-			//
-         
-			Cell[] receiveCellBuffer = new Cell[this.largestSliceToReceive];
-         
-			ObjectBuf<Cell> livingBorderCellsToReceive = ObjectBuf.buffer(receiveCellBuffer);
-			CommStatus receiveStatus = null;
-         			
-			try {
-				receiveStatus = this.commWorld.receive(
-						this.rightProcessorRank,
-						LEFT_BORDER_TAG,
-						livingBorderCellsToReceive);
-            
-				//
-				// Parse the buffer and insert the cells into a local Hash Map
-				// for simulation.
-				//
-            
-				for (int i = 0; i < receiveStatus.length; i++) {
-					Cell currentCell = livingBorderCellsToReceive.get(i);
-					System.out.printf("%d Received: %s\n", this.processorRank, currentCell);
-					if (currentCell != null) {
-						this.borderCells.put(currentCell, currentCell);
-						this.addLivingCell(currentCell);
-					}
-				}
-			}
-			catch (IOException e) {
-				System.out.println("Processor: " + this.processorRank + " could not " + 
-                  "receive Left Border from Processor: " + this.leftProcessorRank);
-			}	
+		catch (Exception e) {
+            System.out.printf(
+            		"Processor: %d could not receive Left Border from Processor: %d\n", 
+            		this.processorRank,this.leftProcessorRank);
+			e.printStackTrace();
+			return null;
 		}
 		
-		if (this.leftProcessorRank != -1) {
-			System.out.printf("%d receiving from left processor: %d\n", this.processorRank, this.leftProcessorRank);
-			//
-			// Only allocate for the largest possible slice.
-			//
-         
-			Cell[] receiveCellBuffer = new Cell[this.largestSliceToReceive];
-         
-			ObjectBuf<Cell> livingBorderCellsToReceive = ObjectBuf.buffer(receiveCellBuffer);
-			CommStatus receiveStatus = null;
-         			
-			try {
-				receiveStatus = this.commWorld.receive(
-						this.leftProcessorRank,
-						RIGHT_BORDER_TAG,
-						livingBorderCellsToReceive);
-            
-				//
-				// Parse the buffer and insert the cells into a local Hash Map
-				// for simulation.
-				//
-            
-				for (int i = 0; i < receiveStatus.length; i++) {
-					Cell currentCell = livingBorderCellsToReceive.get(i);
-					System.out.printf("%d Received: %s\n", this.processorRank, currentCell);
-					if (currentCell != null) {
-						this.borderCells.put(currentCell, currentCell);
-						this.addLivingCell(currentCell);
-					}
-				}
-			}
-			catch (IOException e) {
-				System.out.println("Processor: " + this.processorRank + " could not " + 
-                  "receive Left Border from Processor: " + this.leftProcessorRank);
-			}	
-		}
-	}
-
-	/*public void sendReceiveLiveCellCount() {
-		// prepare border information to send
-		this.updateBorderCellLists();
-		
-		// create temporary arrays
-		Cell[] livingLeftBorderCellHolder = this.leftBorder.toArray(new Cell[this.leftBorder.size()]);
-		Cell[] livingRightBorderCellHolder = this.rightBorder.toArray(new Cell[this.leftBorder.size()]);
-		
-		// create send buffers
-		ObjectBuf<Cell> leftBorderCellsToSend = ObjectBuf.buffer(livingLeftBorderCellHolder);
-		ObjectBuf<Cell> rightBorderCellsToSend = ObjectBuf.buffer(livingRightBorderCellHolder);
-      
-		// prepare buffer to receive
-		Cell[] receiveCellBuffer = new Cell[this.largestSliceToReceive];     
-		ObjectBuf<Cell> leftBorderCellsToReceive = ObjectBuf.buffer(receiveCellBuffer);
-		ObjectBuf<Cell> rightBorderCellsToReceive = ObjectBuf.buffer(receiveCellBuffer);
-		CommStatus receiveStatus = null;
-
-		if (this.leftProcessorRank != -1) {
-			try {
-				receiveStatus = this.commWorld.sendReceive(
-									this.leftProcessorRank, 
-									leftBorderCellsToSend,
-									this.rightProcessorRank,
-									rightBorderCellsToReceive);
-				
-				
-			}
-			catch (Exception e) {
-				e.printStackTrace();
-			}
-		}
-		
-		if (this.leftProcessorRank != -1) {
-			CommRequest request = new CommRequest();
-         
-			try {
-				this.commWorld.send(
-						this.leftProcessorRank, 
-						LEFT_BORDER_TAG, 
-						livingBorderCellSlices,
-						request);
-            
-				//System.out.println("Processor " + this.myProcessorRank + " SENT TO LEFT: " + this.leftProcessorRank);
-			}
-			catch (IOException e) {
-				System.out.println("Processor: " + this.processorRank + " could not " + 
-						"send Left Border to Processor: " + this.leftProcessorRank);
-			}
-		}
-      
-		if (this.rightProcessorRank != -1) {
-			ObjectBuf<Cell> livingBorderCellSlices = ObjectBuf.buffer(livingRightBorderCellHolder);
-			CommRequest request = new CommRequest();
-         
-			try {
-				this.commWorld.send(
-						this.rightProcessorRank, 
-						RIGHT_BORDER_TAG, 
-						livingBorderCellSlices,
-						request);
-            
-				//System.out.println("Processor " + this.myProcessorRank + " SENT TO RIGHT: " + this.rightProcessorRank);
-			}
-			catch (IOException e) {
-				System.out.println("Processor: " + this.processorRank + " could not " + 
-                  "send Right Border to Processor: " + this.rightProcessorRank);
-            }
-		}
+		return livingCellsToReceive;
 	}
 	
-	public void sendReceiveBorders() {
-		
-	}*/
- 
+	/**
+	 * Sends the specified list of live cells to the neighbor with the given
+	 * rank.
+	 * @param neighborRank Neighbor who is to receive the cells.
+	 * @param tag Tag with which to send the cells.
+	 * @param liveCells Cells to send.
+	 */
+	protected void sendLiveCells(int neighborRank, int tag, List<Cell> liveCells) {
+		// fail fast
+		if (neighborRank == this.NON_NEIGHBOR) {
+			return;
+		}
+
+		Cell[] livingCellArray = liveCells.toArray(new Cell[liveCells.size()]);
+
+		ObjectBuf<Cell> livingBorderCellSlices = ObjectBuf.buffer(livingCellArray);
+		CommRequest request = new CommRequest();
+
+		try {
+			this.commWorld.send(
+					neighborRank, 
+					tag, 
+					livingBorderCellSlices,
+					request);
+	            
+		}
+		catch (IOException e) {
+			System.out.println("Processor: " + this.processorRank + " could not " + 
+					"send Left Border to Processor: " + this.leftProcessorRank);
+		}
+	}
+
+	
 	/* (non-Javadoc)
 	 * @see GameOfLifeSimulator#performSimulation()
 	 */
 	public void performSimulation() {
-		this.sendBorders();
-		this.receiveBorders();
-
-		for (Cell c : this.livingCells.keySet()) {
-			System.out.printf("%d has: %s\n", this.processorRank, c);
-		}
+		// update left and right border cell lists
+		this.updateBorderCellLists();
 		
-		super.performSimulation();
-
-		System.out.printf("Post sim %d has cell count: %d\n", this.processorRank, this.getLivingCellCount());
-		for (Cell c : this.livingCells.keySet()) {
-			System.out.printf("Post sim %d has: %s\n", this.processorRank, c);
-		}
+		// send our left border, receive someone else's left border
+		this.sendLiveCells(this.leftProcessorRank, LEFT_BORDER_TAG, this.leftBorder);
 		
-		System.out.printf("%d : has %d border cells\n", this.processorRank, this.borderCells.size());
+		CommStatus receiveStatus = null;
+		ObjectBuf<Cell> borderCells = this.receiveLiveCells(this.rightProcessorRank, LEFT_BORDER_TAG, receiveStatus);
+
+        for (int i = 0; i < receiveStatus.length; i++) {
+        	Cell currentCell = borderCells.get(i);
+            if (currentCell != null) {
+            	this.borderCells.put(currentCell, currentCell);
+            	this.addLivingCell(currentCell);
+            }
+        }
+		
+        // our right border, receive someone else's right border
+        this.sendLiveCells(this.rightProcessorRank, RIGHT_BORDER_TAG, this.rightBorder);
+        
+        receiveStatus = null;
+        borderCells = this.receiveLiveCells(this.leftProcessorRank, RIGHT_BORDER_TAG, receiveStatus);
+        
+        for (int i = 0; i < receiveStatus.length; i++) {
+        	Cell currentCell = borderCells.get(i);
+            if (currentCell != null) {
+            	this.borderCells.put(currentCell, currentCell);
+            	this.addLivingCell(currentCell);
+            }
+        }
+        
+       
+        // simulate with all information
+        super.performSimulation();
+	   
 		
 		// clear the border cells
 		for (Cell c : this.borderCells.keySet()) {
@@ -452,10 +300,42 @@ public class NeighborCommGameOfLifeSimulator extends SequentialGameOfLifeSimulat
 		}
 		this.borderCells.clear();
 		
+		// remove those cells that are outside our bounds
+		// update our bounds if the cell is a part of the neighborhood and there is no neighbor
+		// to manage them
 		for (Cell c : this.livingCells.keySet()) {
-			if (c.y < this.leftBorderYBound || c.y > this.rightBorderYBound) {
-				this.cellsToRemove.add(c);
+			if (c.y < this.leftBorderYBound) {
+				if (this.leftProcessorRank == NeighborCommGameOfLifeSimulator.NON_NEIGHBOR) {
+					this.updateBorderBounds(c);
+				}
+				else {
+					this.cellsToRemove.add(c);
+				}
+				continue;
 			}
+			
+			if (c.y > this.rightBorderYBound) {
+				if (this.rightProcessorRank == NeighborCommGameOfLifeSimulator.NON_NEIGHBOR) {
+					this.updateBorderBounds(c);
+				}
+				else {
+					this.cellsToRemove.add(c);
+				}
+				continue;
+			}
+			
+/*			if ( (c.y < this.leftBorderYBound && 
+					this.leftProcessorRank != NeighborCommGameOfLifeSimulator.NON_NEIGHBOR) ||
+					(c.y > this.rightBorderYBound && 
+					this.rightProcessorRank != NeighborCommGameOfLifeSimulator.NON_NEIGHBOR) )
+			{
+				this.cellsToRemove.add(c);
+				
+			}
+*/
+//			if (c.y < this.leftBorderYBound || c.y > this.rightBorderYBound) {
+//				this.cellsToRemove.add(c);
+//			}
 		}
 		
 		for (Cell c : this.cellsToRemove) {
@@ -487,7 +367,7 @@ public class NeighborCommGameOfLifeSimulator extends SequentialGameOfLifeSimulat
    		// compute left neighbor
 		if (this.processorRank - 1 == -1) {
 			// No Wrapping for now, so make leftmost processor's left neighbor invalid.
-			this.leftProcessorRank = -1;
+			this.leftProcessorRank = NeighborCommGameOfLifeSimulator.NON_NEIGHBOR;
 		}	
 		else {
 			this.leftProcessorRank = (this.processorRank - 1) % this.numProcessors;
@@ -496,7 +376,7 @@ public class NeighborCommGameOfLifeSimulator extends SequentialGameOfLifeSimulat
 		// compute right neighbor
 		if (this.processorRank + 1 == this.numProcessors) {
 			// No Wrapping for now, so make rightmost processor's right neighbor invalid.
-			this.rightProcessorRank = -1;
+			this.rightProcessorRank = NeighborCommGameOfLifeSimulator.NON_NEIGHBOR;
 		}
 		else {
 			this.rightProcessorRank = (this.processorRank + 1) % this.numProcessors;
@@ -507,21 +387,19 @@ public class NeighborCommGameOfLifeSimulator extends SequentialGameOfLifeSimulat
    	 * Updates the object's borders to contain the newly received cell.
    	 * @param c Cell that possibly extends this processor's borders
    	 */
-   	private void updateBorderBounds(Cell c) {
+   	protected void updateBorderBounds(Cell c) {
    		if (c.y < this.leftBorderYBound) {
    			this.leftBorderYBound = c.y;
    		}
-        if (c.y > rightBorderYBound) {
+   		if (c.y > rightBorderYBound) {
         	this.rightBorderYBound = c.y;
         }
-        
-        System.out.printf("%d has border: %d %d\n", this.processorRank, this.leftBorderYBound, this.rightBorderYBound);
    	}
  
    	/**
    	 * Updates the border cell lists for transmission.
    	 */
-	private void updateBorderCellLists() {
+	protected void updateBorderCellLists() {
 		//
 		// Create left and right borders to send. Since the leftmost and
 		// or rightmost border values may be the same as in other processors,
@@ -546,3 +424,160 @@ public class NeighborCommGameOfLifeSimulator extends SequentialGameOfLifeSimulat
 		}
 	}
 }
+
+
+/**
+ * At each iteration, the Worker Processor will send its 'Border' Cells
+ * to its designated neighbors.
+ */
+/*
+public void sendLeftBorder() {
+   this.updateBorderCellLists();
+   Cell[] livingLeftBorderCellHolder = this.leftBorder.toArray(new Cell[this.leftBorder.size()]);
+   
+   if (this.leftProcessorRank != -1) {
+     ObjectBuf<Cell> livingBorderCellSlices = ObjectBuf.buffer(livingLeftBorderCellHolder);
+     CommRequest request = new CommRequest();
+
+     try {
+        this.commWorld.send(
+              this.leftProcessorRank, 
+              LEFT_BORDER_TAG, 
+              livingBorderCellSlices,
+              request);
+        
+     }
+     catch (IOException e) {
+        System.out.println("Processor: " + this.processorRank + " could not " + 
+              "send Left Border to Processor: " + this.leftProcessorRank);
+     }
+  }
+}*/
+
+/*public void sendRightBorder() {
+   this.updateBorderCellLists();
+   Cell[] livingRightBorderCellHolder = this.rightBorder.toArray(new Cell[this.rightBorder.size()]);
+   
+   if (this.rightProcessorRank != -1) {
+     //System.out.printf("%d sending to right processor: %d\n", this.processorRank, this.rightProcessorRank);
+     ObjectBuf<Cell> livingBorderCellSlices = ObjectBuf.buffer(livingRightBorderCellHolder);
+     CommRequest request = new CommRequest();
+     
+     try {
+        this.commWorld.send(
+              this.rightProcessorRank, 
+              RIGHT_BORDER_TAG, 
+              livingBorderCellSlices,
+              request);
+        
+        //System.out.println("Processor " + this.myProcessorRank + " SENT TO RIGHT: " + this.rightProcessorRank);
+     }
+     catch (IOException e) {
+        System.out.println("Processor: " + this.processorRank + " could not " + 
+              "send Right Border to Processor: " + this.rightProcessorRank);
+        }
+  }
+}*/
+
+/**
+* At each iteration, the Worker Processor will receive its Border Cells
+* from its designated neighbors. 
+* 
+* NOTE: When receiving, Worker Processors will receive Right Borders from 
+* their Left Neighbors and Left Borders from their Right Neighbors.
+*/ 
+/*
+public void receiveLeftBorder() {
+   if (this.leftProcessorRank != -1) {
+     //System.out.printf("%d receiving from left processor: %d\n", this.processorRank, this.leftProcessorRank);
+     //
+     // Only allocate for the largest possible slice.
+     //
+     
+     Cell[] receiveCellBuffer = new Cell[this.largestSliceToReceive];
+     
+     ObjectBuf<Cell> livingBorderCellsToReceive = ObjectBuf.buffer(receiveCellBuffer);
+     CommStatus receiveStatus = null;
+     
+     //
+     // Looking for this Processor's Left Border, which is another Processor's
+     // Right Border.
+     //
+     
+     try {
+        receiveStatus = this.commWorld.receive(
+              this.leftProcessorRank,
+              RIGHT_BORDER_TAG,
+              livingBorderCellsToReceive);
+        
+        //
+        // Parse the buffer and insert the cells into a local Hash Map
+        // for simulation.
+        //
+        
+        //System.out.printf("%d Received: %d\n", this.processorRank, receiveStatus.length);
+        
+        for (int i = 0; i < receiveStatus.length; i++) {
+           Cell currentCell = livingBorderCellsToReceive.get(i);
+           
+           if (currentCell != null) {
+              this.borderCells.put(currentCell, currentCell);
+              this.addLivingCell(currentCell);
+           }
+        }
+     }
+     catch (IOException e) {
+        System.out.println("Processor: " + this.processorRank + " could not " + 
+              "receive Left Border from Processor: " + this.leftProcessorRank);
+     }  
+  }
+}*/
+
+
+/*public void receiveRightBorder() {
+   if (this.rightProcessorRank != -1) {
+     //System.out.printf("%d receiving from right processor: %d\n", this.processorRank, this.rightProcessorRank);
+
+     //
+     // Only allocate for the largest possible slice.
+     //
+     
+     Cell[] receiveCellBuffer = new Cell[this.largestSliceToReceive];
+     
+     ObjectBuf<Cell> livingBorderCellsToReceive = ObjectBuf.buffer(receiveCellBuffer);
+     CommStatus receiveStatus = null;
+     
+     //
+     // Looking for this Processor's Right Border, which is another Processor's
+     // Left Border.
+     //
+     
+     try {
+        receiveStatus = this.commWorld.receive(
+              this.rightProcessorRank,
+              LEFT_BORDER_TAG,
+              livingBorderCellsToReceive);
+        
+        //System.out.printf("%d Received: %d\n", this.processorRank, receiveStatus.length);
+        
+        //
+        // Parse the buffer and insert the cells into a local Hash Map
+        // for simulation.
+        //
+        
+        for (int i = 0; i < receiveStatus.length; i++) {
+           Cell currentCell = livingBorderCellsToReceive.get(i);
+           if (currentCell != null) {
+              this.borderCells.put(currentCell, currentCell);
+              this.addLivingCell(currentCell);
+           }
+        }
+     }
+     catch (IOException e) {
+        System.out.println("Processor: " + this.processorRank + " could not " + 
+              "receive Left Border from Processor: " + this.leftProcessorRank);
+     }  
+  }
+}*/
+
+
