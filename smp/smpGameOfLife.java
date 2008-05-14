@@ -3,8 +3,10 @@ import edu.rit.pj.ParallelTeam;
 import edu.rit.pj.ParallelRegion;
 import edu.rit.pj.IntegerForLoop;
 import edu.rit.pj.BarrierAction;
+import java.util.Vector;
 import java.util.List;
 import java.util.ArrayList;
+
 
 /**
  *	Game of Life for SMP machine
@@ -12,14 +14,24 @@ import java.util.ArrayList;
 
 public class smpGameOfLife {
 
-	static int maxIterations = 1000;
+	static int maxIterations;
 	static CellLifeRules rules = new ConwayCellLifeRules();
 	static boolean board[][];
 	static ArrayList CellList;
 	static boolean changed;
 	static int cycle;
-	static List<Cell> Births;
-	static List<Cell> Deaths;
+	static Vector Births;
+	static Vector Deaths;
+	static boolean printBoard;
+	
+	private static void printUsage(){
+		System.out.println("Usage:");
+		System.out.println("$java smpGameOfLife inputFileName MaxIterations");
+		System.out.println("$java smpGameOfLife inputFileName MaxIterations -p");
+		System.out.println("  inputFileName is a serialized ArrayList<Cell>");
+		System.out.println("  MaxIterations is the maxiumum number of iterations allowed");
+		System.out.println("  -p prints the initial and final board to standard output");
+	}
 	
 	/**
 	 * Returns the number of live neighbors
@@ -86,6 +98,14 @@ public class smpGameOfLife {
 	
 	public static void main(String[] args) throws Exception {
 
+		if ( !(args.length == 2 || (args.length == 3/* && args[2]== "-p"*/ ))){
+			System.out.println(args.length);
+			System.out.println(args[2]);
+			printUsage();
+		}
+		else{
+		maxIterations = Integer.parseInt( args[1] );
+		printBoard = args.length == 3;
 		CellList = CellFileReader.readFile( args[0] );
 
 		//find max board size
@@ -100,10 +120,10 @@ public class smpGameOfLife {
 		}
 		
 		board = new boolean[rows + 1][cols + 1];
-		Births = new ArrayList<Cell>();
-		Deaths = new ArrayList<Cell>();
-		cycle = 0;
-		
+		Births = new Vector();
+		Deaths = new Vector();
+		cycle = 0;		
+
 		//create ParallelTeam with anonymous inner class ParallelRegion
 		new ParallelTeam().execute (new ParallelRegion(){
 			
@@ -127,47 +147,55 @@ public class smpGameOfLife {
 				execute( 0, CellList.size() - 1, 
 					new IntegerForLoop(){
 						public void run( int startIndex, int endIndex ){
-							int r, c;
 							Cell NextCell;
 							for (int i = startIndex; i <= endIndex; i++){
 								NextCell = (Cell)CellList.get( i );
-								r = NextCell.x;
-								c = NextCell.y;
-								board[r][c] = true;
+								board[NextCell.x][NextCell.y] = true;
 							}
 						}
 					},
 				
-					//one thread
 					new BarrierAction(){
 						public void run() throws Exception {
 							CellList.clear();
 							
 							//display initial board setup
-							System.out.println("Initial Board Configuration:");
-							displayBoard(board);
+							if (printBoard){
+								System.out.println("Initial Board Configuration:");
+								displayBoard(board);
+							}
 						}
 					}
 				);
 				
 				do {
-					//Changed.set( false );
-					changed = false;
+					barrier(new BarrierAction() {
+						public void run() throws Exception{
+							changed = false;
+							//Changed.set( false );
+							++cycle;
+						}
+					});
+
 					execute( 0, board.length - 1, 
 						new IntegerForLoop(){
+							
 							boolean threadChanged = false;
+							List<Cell> threadBirths = new ArrayList<Cell>();
+							List<Cell> threadDeaths = new ArrayList<Cell>();
+
 							public void run( int firstRow, int lastRow ){
 								for (int r = firstRow; r<= lastRow; r++){
 									for (int c = 0; c < board[0].length; c++){
 										
 										if ( board[r][c] ){
 											if ( rules.dies(numLiveNeighbors( board, r, c ))){
-												Deaths.add(new Cell(r,c));
+												threadDeaths.add(new Cell(r,c));
 												threadChanged = true;
 											}
 										} else {
 											if ( rules.isBorn(numLiveNeighbors( board, r, c ))){
-												Births.add(new Cell(r,c));
+												threadBirths.add(new Cell(r,c));
 												threadChanged = true;
 											}
 										}
@@ -175,26 +203,28 @@ public class smpGameOfLife {
 								}
 							}
 							public void finish(){
-								if (threadChanged ){
+								if ( threadChanged ){
 									changed = true;
 								}
-							}
-						},
-						new BarrierAction() {
-							public void run() throws Exception{
-								cycle++;
+								if (!threadBirths.isEmpty()){
+									Births.addAll( threadBirths );
+								}
+								if (!threadDeaths.isEmpty()){
+									Deaths.addAll( threadDeaths );
+								}
 							}
 						}
 					); //end execute
 					
 					
 					//Birth new Cells
-					execute (0, Births.size() -1, 
+					execute (0, Births.size() - 1, 
 						new IntegerForLoop(){
 							public void run( int firstCell, int lastCell){
+								List threadBirths = Births.subList(firstCell, lastCell+1);
 								Cell TempCell;
-								for (int i=firstCell; i<=lastCell; i++){
-									TempCell=Births.get(i);
+								for (Object obj: threadBirths){
+									TempCell = (Cell)obj;
 									board[TempCell.x][TempCell.y]=true;
 								}
 							}
@@ -210,9 +240,10 @@ public class smpGameOfLife {
 					execute (0, Deaths.size() - 1,
 						new IntegerForLoop(){
 							public void run( int firstCell, int lastCell){
+								List threadDeaths = Deaths.subList(firstCell, lastCell+1);
 								Cell TempCell;
-								for (int i=firstCell; i<=lastCell; i++){
-									TempCell = Deaths.get(i);
+								for (Object obj: threadDeaths){
+									TempCell = (Cell)obj;
 									board[TempCell.x][TempCell.y]=false;
 								}
 							}
@@ -220,19 +251,20 @@ public class smpGameOfLife {
 						new BarrierAction() {
 							public void run() throws Exception{
 								Deaths.clear();
-								cycle++;
-								//System.out.println(cycle);
 							}
 						}
 					); //end execute
 
-				} while ( cycle < maxIterations /* && changed */);
+				} while ( cycle < maxIterations && /*Changed.get()*/ changed );
 			}	
 
 		});		//end ParallelTeam().execute
 		
 		//display final board configuration
-		System.out.println("Final Board Configuration (" + cycle + " iterations)...");
-		displayBoard(board);
+		if (printBoard){
+			System.out.println("Final Board Configuration (" + cycle + " iterations)...");
+			displayBoard( board );
+		}
 	}
+}
 }
