@@ -19,9 +19,18 @@ public class smpGameOfLife_Hash_Serial{
 	private static List<Cell> Births;
 	private static List<Cell> Deaths;
 	private static List<Cell> EmptyNeighbors;
-	static CellLifeRules rules = new ConwayCellLifeRules();
-
-
+	private static CellLifeRules rules = new ConwayCellLifeRules();
+	private static boolean printBoard;
+	
+	private static void printUsage(){
+		System.out.println("Usage:");
+		System.out.println("$java smpGameOfLife inputFileName MaxIterations");
+		System.out.println("$java smpGameOfLife inputFileName MaxIterations -p");
+		System.out.println("  inputFileName is a serialized ArrayList<Cell>");
+		System.out.println("  MaxIterations is the maxiumum number of iterations allowed");
+		System.out.println("  -p prints the initial and final board to standard output");
+	}
+	
 	private static void TallyNeighbors( int x, int y, int increase ){
 		Cell TallyCell;
 		for ( int i=x-1; i<=x+1; i++ ){
@@ -105,6 +114,12 @@ public class smpGameOfLife_Hash_Serial{
 
 	public static void main( String args[] ){
 		
+		if ( !(args.length == 2 || (args.length == 3/* && args[2]== "-p"*/ ))){
+			printUsage();
+		} else {
+		
+		printBoard = args.length == 3;
+		
 		ArrayList CellList = CellFileReader.readFile( args[0] );
 		LiveCells = new HashSet<Cell>( CellList.size() );		
 		NeighborCount = new HashMap<Cell,Integer>( CellList.size() );
@@ -120,8 +135,10 @@ public class smpGameOfLife_Hash_Serial{
 
 		CellList.clear();
 		
-		System.out.println("Initial Board Configuration...");
-		displayBoard();
+		if (printBoard){
+			System.out.println("Initial Board Configuration...");
+			displayBoard();
+		}
 
 		//create initial neighbor count
 		int iteration = 0;
@@ -177,8 +194,10 @@ public class smpGameOfLife_Hash_Serial{
 			}
 
 		} while ( changed && iteration++ < maxIterations );
-		
-		System.out.println("Final Board Configuration (" + iteration + " iterations)...");
-		displayBoard();
+		if (printBoard){
+			System.out.println("Final Board Configuration (" + iteration + " iterations)...");
+			displayBoard();
+		}
+	}
 	}
 }

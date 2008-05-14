@@ -99,11 +99,9 @@ public class smpGameOfLife {
 	public static void main(String[] args) throws Exception {
 
 		if ( !(args.length == 2 || (args.length == 3/* && args[2]== "-p"*/ ))){
-			System.out.println(args.length);
-			System.out.println(args[2]);
 			printUsage();
-		}
-		else{
+		} else {
+			
 		maxIterations = Integer.parseInt( args[1] );
 		printBoard = args.length == 3;
 		CellList = CellFileReader.readFile( args[0] );
