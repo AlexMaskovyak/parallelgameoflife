@@ -10,7 +10,7 @@ import java.util.Comparator;
  * @TODO Determine if there is a way to secure x, y so that this can be
  * 			extended into other Cell objects (3D cell, etc.)
  */
-public class Cell implements java.io.Serializable {
+public class Cell implements java.io.Serializable, Comparable<Cell> {
 
 	//
 	// public fields
@@ -33,6 +33,20 @@ public class Cell implements java.io.Serializable {
 	public Cell(int x, int y) {
 		this.x = x;
 		this.y = y;
+	}
+	
+
+	/**
+	 * Implementation for the Comparable interface.
+	 */
+	public int compareTo(Cell arg0) {
+		// sort first by x, then by y if needed
+		int xDiff = this.x - arg0.x;
+		if (xDiff == 0) {
+			return this.y - arg0.y;
+		}
+		
+		return xDiff;
 	}
 	
 	/**
@@ -68,8 +82,13 @@ public class Cell implements java.io.Serializable {
 		return String.format("%d %d", this.x, this.y);
 	}
 	
+	
+	//
+	// Class fields.
+	//
+	
 	/**
-	 * Anonymous comparison class for cell objects, useful for sorting cells
+	 * Anonymous comparison object for cell objects, useful for sorting cells
 	 * by column and then row.
 	 */
 	public static final Comparator<Cell> ColumnComparator = new Comparator<Cell>() {
