@@ -107,10 +107,9 @@ public class DynamicNeighborCommGameOfLifeSimulator extends
 	 */
 	protected int receiveLiveCellCount(
 			int neighborRank,
-			int tag,
-			CommStatus receiveStatus)
+			int tag)
 	{
-		return receiveInteger(neighborRank, tag, receiveStatus);
+		return receiveInteger(neighborRank, tag);
 	}
 	
 	/**
@@ -119,14 +118,11 @@ public class DynamicNeighborCommGameOfLifeSimulator extends
 	 * @param neighborRank Rank of the processor that is to send the provided
 	 * 						value.
 	 * @param tag Tag this message is associated with.
-	 * @param recieveStatus  CommStatus to hold the receive status from the
-	 * 							message send.
 	 * @return Integer value from the given processor.
 	 */
 	protected int receiveInteger(
 			int neighborRank, 
-			int tag, 
-			CommStatus receiveStatus) 
+			int tag) 
 	{
 		// fail fast
 		if (neighborRank == this.NON_NEIGHBOR) {
@@ -135,10 +131,10 @@ public class DynamicNeighborCommGameOfLifeSimulator extends
 		
 		// create buffer to receive value
 		IntegerBuf integerToReceive = IntegerBuf.buffer();
-		receiveStatus = null;
+		super.receiveStatus = null;
 			
 		try {
-			receiveStatus = this.commWorld.receive(
+			super.receiveStatus = this.commWorld.receive(
 					neighborRank, 
 					tag,
 					integerToReceive);
@@ -165,7 +161,6 @@ public class DynamicNeighborCommGameOfLifeSimulator extends
 		List<Cell> myLiveCells = super.getCurrentState();
 		Cell[] liveCellArray = myLiveCells.toArray(new Cell[myLiveCells.size()]);
 		
-		CommStatus receiveStatus = null;
 		int myLiveCellCount = super.getLivingCellCount();
 		
 		// send count values left, get count values from right
@@ -173,8 +168,7 @@ public class DynamicNeighborCommGameOfLifeSimulator extends
 		int rightNeighborLiveCellCount = 
 			this.receiveLiveCellCount(
 				this.rightProcessorRank, 
-				this.LEFT_CELL_COUNT, 
-				receiveStatus);
+				this.LEFT_CELL_COUNT);
 		
 		// balance out on that side
 		// if we are bigger, we need to send to the smaller
@@ -188,8 +182,8 @@ public class DynamicNeighborCommGameOfLifeSimulator extends
 		}
 		// if we are smaller, we need to receive from the larger
 		else if (rightNeighborLiveCellCount > (myLiveCellCount * this.thresholdMod)) {
-			ObjectBuf<Cell> received = super.receiveLiveCells(this.leftProcessorRank, this.LEFT_CELL_ADJUST, receiveStatus);
-	        for (int i = 0; i < receiveStatus.length; i++) {
+			ObjectBuf<Cell> received = super.receiveLiveCells(this.leftProcessorRank, this.LEFT_CELL_ADJUST);
+	        for (int i = 0; i < super.receiveStatus.length; i++) {
 	        	Cell currentCell = received.get(i);
 	            if (currentCell != null) {
 	            	// update borders on left side, expand
@@ -207,8 +201,7 @@ public class DynamicNeighborCommGameOfLifeSimulator extends
 		int leftNeighborLiveCellCount = 
 			this.receiveLiveCellCount(
 					this.leftProcessorRank, 
-					this.RIGHT_CELL_COUNT, 
-					receiveStatus);
+					this.RIGHT_CELL_COUNT);
 		
 		// balance out on that side
 		// if we are bigger, we need to send to the smaller
@@ -222,8 +215,8 @@ public class DynamicNeighborCommGameOfLifeSimulator extends
 			//this.leftBorderYBound = liveCellArray[liveCellArray.length - 1].y;
 		}
 		else if (rightNeighborLiveCellCount > (myLiveCellCount * this.thresholdMod)) {
-			ObjectBuf<Cell> received = super.receiveLiveCells(this.rightProcessorRank, this.RIGHT_CELL_ADJUST, receiveStatus);
-	        for (int i = 0; i < receiveStatus.length; i++) {
+			ObjectBuf<Cell> received = super.receiveLiveCells(this.rightProcessorRank, this.RIGHT_CELL_ADJUST);
+	        for (int i = 0; i < super.receiveStatus.length; i++) {
 	        	Cell currentCell = received.get(i);
 	            if (currentCell != null) {
 	            	// expand border bounds on right side
