@@ -11,6 +11,13 @@ import edu.rit.pj.Comm;
  */
 public class GameOfLife {
 
+	public enum EngineType { SEQ, MP, DYN_MP, SMP };
+	public static final int COMMAND_LINE_LENGTH = 5;
+	public static final String USAGE = 
+		"java -Dpj.np=[num processors] GameOfLife " +
+		"[num rows] [num columns] [iterations] [input filename]" +
+		"[engine type: {SEQ, MP, DYN_MP, SMP}]";
+	
 	/**
 	 * Main executable method for the game of life.
 	 * @param args
@@ -26,10 +33,14 @@ public class GameOfLife {
 		//
 		// read inputs from main
 		//
+		checkUsage(args);
+		
 		int numGridRows = Integer.parseInt(args[0]);
 		int numGridCols = Integer.parseInt(args[1]);
 		int iterationsToRun = Integer.parseInt(args[2]);
-		String liveCellInputFile = args[3];
+		String inputFile = args[3];
+		EngineType engineToRun = EngineType.valueOf(args[4]);
+		
 		
 		//
 		// create Game of Life objects
@@ -41,39 +52,60 @@ public class GameOfLife {
 		CellLifeRules rules = new ConwayCellLifeRules();
 		CellNeighborhood neighborhood = 
 			new ConwayCellNeighborhood(0, numGridCols, 0, numGridRows);
-		File cellsFile = new File("glider.txt");
+		
+		// get file for input
+		File cellsFile = new File(inputFile);
 
 		// create timing items
 		long startTime, endTime, runTime;
 
-		//System.out.println("Getting live cells.");
-		
-		List<Cell> livingCells = GameOfLifeFileIO.getLiveCells(cellsFile);
-		
-		//System.out.printf("Have live cells: %d\n", livingCells.size());
-		
 		// create objects, distribute data and perform simulation
-		// better start our time
+		// better start our timer
 		startTime = System.nanoTime();
 		
-		//System.out.println("Make simulators...");
+		GameOfLifeSimulator simulator = null;
 		
-		GameOfLifeSimulator simulator = 
-			new NeighborCommGameOfLifeSimulator(
-					rules, 
-					neighborhood, 
-					commWorld,
-					cellsFile);
-		//GameOfLifeSimulator simulator = new SequentialGameOfLifeSimulator(livingCells, rules, neighborhood);
-		
-		//if (commWorld.rank() == 1) {
-		//	System.exit(0);
-		//}
-		
-		System.out.printf("%d cells alive\n", simulator.getLivingCellCount());
+		switch (engineToRun) {
+			case SEQ:
+				List<Cell> livingCells = 
+					GameOfLifeFileIO.getLiveCells(cellsFile);
+				simulator = new SequentialGameOfLifeSimulator(
+						livingCells,
+						rules,
+						neighborhood);
+				break;
+			case MP: 
+				simulator = new NeighborCommGameOfLifeSimulator(
+						rules,
+						neighborhood,
+						commWorld,
+						cellsFile);
+				break;
+			case DYN_MP: 
+				simulator = new DynamicNeighborCommGameOfLifeSimulator(
+						rules,
+						neighborhood,
+						commWorld,
+						cellsFile,
+						1);
+				break;
+			case SMP: 
+				break;
+			default:
+				List<Cell> liveCells = 
+					GameOfLifeFileIO.getLiveCells(cellsFile);
+				simulator = new SequentialGameOfLifeSimulator(
+						liveCells,
+						rules,
+						neighborhood);
+				break;
+		}
+
+		//System.out.printf("%d cells alive\n", simulator.getLivingCellCount());
+
+		// run the simulation
 		for (int i = 0; i < iterationsToRun; ++i) {
 			simulator.performSimulation();
-			//System.out.printf("Iteration %d, %d cells alive\n", i, simulator.getLivingCellCount());
 			System.out.printf("Iteration %d, %d: %s cells alive\n", i, commWorld.rank(), simulator.getLivingCellCount());
 		}	
 		
@@ -89,17 +121,6 @@ public class GameOfLife {
 		System.out.printf("Runtime: %dms\n", 
 				convertNanoSecondsToMilliseconds(runTime));
 		
-		
-		
-		// for testing purposes
-//		List<Cell> liveCells = simulator.getCurrentState();/
-//		for (Cell c : liveCells) {
-//			System.out.printf("%d: %s\n", commWorld.rank(), c);
-//		}
-
-		// run the glider simulation as an example
-//		startTime = System.nanoTime();
-//		GameOfLife.gliderTestCase(simulator);
 
 
 		
@@ -155,8 +176,11 @@ public class GameOfLife {
 	 * Displays the parameter requirements for running this program.
 	 * 
 	 */
-	public static void displayUsage() {
-		// TODO: Implement this method.
+	public static void checkUsage(String[] args) {
+		if (args.length != GameOfLife.COMMAND_LINE_LENGTH) {
+			System.out.println(GameOfLife.USAGE);
+			System.exit(1);
+		}
 	}
 	
 	/**
