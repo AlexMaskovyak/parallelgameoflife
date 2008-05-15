@@ -33,6 +33,23 @@ public class DynamicNeighborCommGameOfLifeSimulator extends
 	protected int iterationCount;
 	protected int iterationThreshold;
 	
+	/**
+	 * Default constructor.
+	 * @param rules Cell life rules to follow for determine life/death.
+	 * @param neighborhood Connectivity framework for cells to determine neighbors.
+	 * @param commWorld Parallel Java communication world.
+	 * @param cellsFile File containing cells for simulation.
+	 * @param iterationThreshold Number of iterations to pursue before a load
+	 * 			readjustment should occur.
+	 */
+	public DynamicNeighborCommGameOfLifeSimulator(
+			CellLifeRules rules, 
+			CellNeighborhood neighborhood,
+			Comm commWorld,
+			File cellsFile)	
+	{
+		this(rules, neighborhood, commWorld, cellsFile, 50);
+	}
 	
 	/**
 	 * Default constructor.
@@ -157,6 +174,17 @@ public class DynamicNeighborCommGameOfLifeSimulator extends
 	public void performSimulation() {
 		this.iterationCount++;
 		
+		if ((this.iterationCount % this.iterationThreshold) == 0) {
+			performLoadBalancing();
+		}
+		
+		this.performSimulation();
+	}
+	
+	/**
+	 * Causes neighbors to undergo cell swapping to balance loads.
+	 */
+	protected void performLoadBalancing() {
 		// exchange live cell counts
 		List<Cell> myLiveCells = super.getCurrentState();
 		Cell[] liveCellArray = myLiveCells.toArray(new Cell[myLiveCells.size()]);
@@ -176,6 +204,9 @@ public class DynamicNeighborCommGameOfLifeSimulator extends
 		if (rightNeighborLiveCellCount < (myLiveCellCount * this.thresholdMod)) {
 			int toSend = (rightNeighborLiveCellCount - myLiveCellCount) / 2;
 			List<Cell> cellsToSend = getRightSliceOfCells(liveCellArray, toSend);
+			
+			System.out.println(cellsToSend.size());
+			
 			super.sendLiveCells(this.rightProcessorRank, this.LEFT_CELL_ADJUST, cellsToSend);
 			// retract border bounds on right side
 			this.rightBorderYBound = liveCellArray[liveCellArray.length - 1 - toSend].y;
@@ -225,12 +256,11 @@ public class DynamicNeighborCommGameOfLifeSimulator extends
 	            }
 	        }
 		}
-		
-		this.performSimulation();
 	}
 	
 	/**
-	 * Get right-portion of the cell array passed in.
+	 * Get right-portion of the cell array passed in, and removes them from the
+	 * the livelist.
 	 * @param cells Original cell array.
 	 * @param size Number of cells to take from the original array.
 	 * @return List of the last n cells of the array.
@@ -240,13 +270,15 @@ public class DynamicNeighborCommGameOfLifeSimulator extends
 		
 		for (int i = 1; i <= size; ++i) {
 			portion.add(cells[cells.length - i]);
+			super.livingCells.remove(cells[cells.length - i]);
 		}
 		
 		return portion;
 	}
 	
 	/**
-	 * Get left-portion of the cell array passed in.
+	 * Get left-portion of the cell array passed in, and removes them from the
+	 * livelist.
 	 * @param cells Original cell array.
 	 * @param size Number of cells to take from the original array.
 	 * @return List of the first n cells of the array.
@@ -256,6 +288,7 @@ public class DynamicNeighborCommGameOfLifeSimulator extends
 		
 		for (int i = 0; i < size; ++i) {
 			portion.add(cells[i]);
+			super.livingCells.remove(cells[cells.length - i]);
 		}
 		
 		return portion;
