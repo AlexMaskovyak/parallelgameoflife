@@ -98,10 +98,16 @@ public class NeighborCommGameOfLifeSimulator extends SequentialGameOfLifeSimulat
 		if (this.processorRank == this.MASTERRANK) {
 			List<Cell> livingCells = GameOfLifeFileIO.getLiveCells(cellsFile);
 			this.distributeDataToWorkers(livingCells);
+			this.leftBorderYBound = (int)this.neighborhood.getBounds().getMinY();
 		}
 		else {
 			this.receiveDataFromMaster();
+			if (this.processorRank == this.numProcessors - 1) {
+				this.rightBorderYBound = (int)this.neighborhood.getBounds().getMaxY();
+			}
 		}
+		
+		System.out.printf("%d has left border %d, right border %d\n", this.processorRank, this.leftBorderYBound, this.rightBorderYBound);
 	}
    
 	
@@ -136,6 +142,7 @@ public class NeighborCommGameOfLifeSimulator extends SequentialGameOfLifeSimulat
 		   this.updateBorderBounds(c);
 		   this.addLivingCell(c);
 	   }
+	   
 	}
    
    /**
@@ -288,54 +295,44 @@ public class NeighborCommGameOfLifeSimulator extends SequentialGameOfLifeSimulat
             	this.addLivingCell(currentCell);
             }
         }
-        
-       
+
         // simulate with all information
         super.performSimulation();
-	   
-		
+	
 		// clear the border cells
 		for (Cell c : this.borderCells.keySet()) {
-			super.livingCells.remove(c);
+			// check to determine whether this is a shared border cell
+			// lower ranked processors preferentially keep shared border cells
+			
+			// basically, we only care if this sits on a right border, if it
+			// does that means that the other guy should delete it and we 
+			// should spare it
+			if (c.y == this.rightBorderYBound) {
+				continue;
+			}
+			if (c.y == this.leftBorderYBound) {
+				super.livingCells.remove(c);
+			}
+			
 		}
 		this.borderCells.clear();
 		
+        // clear our removal list.
+		this.cellsToRemove.clear();
+        
+
 		// remove those cells that are outside our bounds
 		// update our bounds if the cell is a part of the neighborhood and there is no neighbor
 		// to manage them
 		for (Cell c : this.livingCells.keySet()) {
 			if (c.y < this.leftBorderYBound) {
-				if (this.leftProcessorRank == NeighborCommGameOfLifeSimulator.NON_NEIGHBOR) {
-					this.updateBorderBounds(c);
-				}
-				else {
-					this.cellsToRemove.add(c);
-				}
+				this.cellsToRemove.add(c);
 				continue;
 			}
 			
 			if (c.y > this.rightBorderYBound) {
-				if (this.rightProcessorRank == NeighborCommGameOfLifeSimulator.NON_NEIGHBOR) {
-					this.updateBorderBounds(c);
-				}
-				else {
-					this.cellsToRemove.add(c);
-				}
-				continue;
-			}
-			
-/*			if ( (c.y < this.leftBorderYBound && 
-					this.leftProcessorRank != NeighborCommGameOfLifeSimulator.NON_NEIGHBOR) ||
-					(c.y > this.rightBorderYBound && 
-					this.rightProcessorRank != NeighborCommGameOfLifeSimulator.NON_NEIGHBOR) )
-			{
 				this.cellsToRemove.add(c);
-				
 			}
-*/
-//			if (c.y < this.leftBorderYBound || c.y > this.rightBorderYBound) {
-//				this.cellsToRemove.add(c);
-//			}
 		}
 		
 		for (Cell c : this.cellsToRemove) {

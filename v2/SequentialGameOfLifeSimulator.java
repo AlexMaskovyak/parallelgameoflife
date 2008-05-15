@@ -119,6 +119,7 @@ public class SequentialGameOfLifeSimulator implements GameOfLifeSimulator {
 			for (Cell neighbor : neighbors) {
 				// check to see if it is alive
 				Cell liveCell = this.livingCells.get(neighbor);
+				
 				// if it is already alive, increase its count
 				if (liveCell != null) {
 					liveCell.neighborCount++;
@@ -188,7 +189,7 @@ public class SequentialGameOfLifeSimulator implements GameOfLifeSimulator {
 	public void addLivingCell(Cell livingCell) {
 		// ensure that this cell is a resident of the neighborhood
 		// if it isn't, don't bother with the needless computation
-		if (this.neighborhood.isResident(livingCell)) {
+		if (this.neighborhood.isResident(livingCell) && !this.livingCells.containsKey(livingCell)) {
 			this.livingCells.put(livingCell, livingCell);			
 		}
 	}
