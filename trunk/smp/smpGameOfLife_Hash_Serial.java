@@ -1,8 +1,3 @@
-//import edu.rit.pj.Comm;
-//import edu.rit.pj.ParallelTeam;
-//import edu.rit.pj.ParallelRegion;
-//import edu.rit.pj.IntegerForLoop;
-//import edu.rit.pj.BarrierAction;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.List;
@@ -12,7 +7,7 @@ import java.util.HashSet;
 
 public class smpGameOfLife_Hash_Serial{
 	
-	private static int maxIterations = 1000;
+	private static int maxIterations;
 	
 	private static Set<Cell> LiveCells;
 	private static Map<Cell,Integer> NeighborCount;
@@ -119,8 +114,10 @@ public class smpGameOfLife_Hash_Serial{
 		} else {
 		
 		printBoard = args.length == 3;
+		maxIterations = Integer.parseInt(args[1]);
 		
 		ArrayList CellList = CellFileReader.readFile( args[0] );
+
 		LiveCells = new HashSet<Cell>( CellList.size() );		
 		NeighborCount = new HashMap<Cell,Integer>( CellList.size() );
 
