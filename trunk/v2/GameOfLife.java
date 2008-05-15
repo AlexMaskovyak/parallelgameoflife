@@ -64,7 +64,11 @@ public class GameOfLife {
 					neighborhood, 
 					commWorld,
 					cellsFile);
+		//GameOfLifeSimulator simulator = new SequentialGameOfLifeSimulator(livingCells, rules, neighborhood);
 		
+		//if (commWorld.rank() == 1) {
+		//	System.exit(0);
+		//}
 		
 		System.out.printf("%d cells alive\n", simulator.getLivingCellCount());
 		for (int i = 0; i < iterationsToRun; ++i) {
