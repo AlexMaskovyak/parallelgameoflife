@@ -1,0 +1,121 @@
+x=1
+while [ $x -le 33 ]
+do
+  
+  echo "-----------------------" >> smpTimingResults.txt
+  echo "Num Processors $x" >> smpTimingResults.txt
+  echo "-----------------------" >> smpTimingResults.txt 
+  
+  
+  
+  
+
+  echo "" >> smpTimingResults.txt
+
+  echo "~~~~~~~~~~~~~~~~~~~~~~~" >> smpTimingResults.txt
+  echo Test Case 100 x 100 : Dens 20 : 100 Iterations >> \
+smpTimingResults.txt
+
+  java -Dpj.nt=$x smpGameOfLife 100_20.gol 100 >> smpTimingResults.txt
+
+  echo "~~~~~~~~~~~~~~~~~~~~~~~" >> smpTimingResults.txt
+  echo "" >> smpTimingResults.txt
+
+
+
+
+
+
+  echo "~~~~~~~~~~~~~~~~~~~~~~~" >> smpTimingResults.txt
+  echo Test Case 1000 x 1000 : Dens 20 : 100 Iterations >> \
+smpTimingResults.txt
+
+  java -Dpj.nt=$x smpGameOfLife 1000_20 100 >> smpTimingResults.txt
+
+  echo "~~~~~~~~~~~~~~~~~~~~~~~" >> smpTimingResults.txt
+  echo "" >> smpTimingResults.txt
+
+
+
+
+
+
+  echo "~~~~~~~~~~~~~~~~~~~~~~~" >> smpTimingResults.txt
+  echo Test Case 2000 x 2000 : Dens 20 : 100 Iterations >> \
+smpTimingResults.txt
+
+  java -Dpj.nt=$x smpGameOfLife 2000_20.gol 100 >> smpTimingResults.txt
+
+  echo "~~~~~~~~~~~~~~~~~~~~~~~" >> smpTimingResults.txt
+  echo "" >> smpTimingResults.txt
+  
+  
+ 
+ 
+ 
+ 
+ 
+
+  echo "~~~~~~~~~~~~~~~~~~~~~~~" >> smpTimingResults.txt
+  echo Test Case 1000 x 1000 : Dens 40 : 100 Iterations >> \
+TimingResults.txt
+
+  java -Dpj.nt=$x smpGameOfLife 1000_40.gol 100 >> smpTimingResults.txt
+
+  echo "~~~~~~~~~~~~~~~~~~~~~~~" >> smpTimingResults.txt
+  echo "" >> smpTimingResults.txt
+  
+  
+  
+  
+  
+  
+  
+  
+  echo "~~~~~~~~~~~~~~~~~~~~~~~" >> smpTimingResults.txt
+  echo Test Case 1000 x 1000 : Dens 80 : 100 Iterations >> \
+smpTimingResults.txt
+
+  java -Dpj.nt=$x smpGameOfLife 1000_80.gol 100 >> smpTimingResults.txt
+
+  echo "~~~~~~~~~~~~~~~~~~~~~~~" >> smpTimingResults.txt
+  echo "" >> smpTimingResults.txt
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  echo "~~~~~~~~~~~~~~~~~~~~~~~" >> smpTimingResults.txt
+  echo Test Case 1000 x 1000 : Dens 20 : 1000 Iterations >> \
+smpTimingResults.txt
+
+  java -Dpj.nt=$x smpGameOfLife 1000_20.gol 1000 >> smpTimingResults.txt
+
+  echo "~~~~~~~~~~~~~~~~~~~~~~~" >> smpTimingResults.txt
+  echo "" >> smpTimingResults.txt
+  
+  
+  
+  
+  
+  
+  
+  
+  echo "~~~~~~~~~~~~~~~~~~~~~~~" >> smpTimingResults.txt
+  echo Test Case 1000 x 1000 : Dens 20 : 10000 Iterations >> \
+TimingResults.txt
+
+  java -Dpj.nt=$x smpGameOfLife 1000_20.gol 10000 >> smpTimingResults.txt
+
+  echo "~~~~~~~~~~~~~~~~~~~~~~~" >> smpTimingResults.txt
+  echo "" >> smpTimingResults.txt
+  
+
+
+
+  x=$(( $x * 2 ))
+done
