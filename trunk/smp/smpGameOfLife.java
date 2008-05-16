@@ -100,11 +100,14 @@ public class smpGameOfLife {
 
 		if ( !(args.length == 2 || (args.length == 3/* && args[2]== "-p"*/ ))){
 			printUsage();
-		} else {
-			
+		}
+		else{
 		maxIterations = Integer.parseInt( args[1] );
 		printBoard = args.length == 3;
 		CellList = CellFileReader.readFile( args[0] );
+
+		long startTime, endTime;
+		startTime = System.nanoTime();
 
 		//find max board size
 		int rows = 0;
@@ -121,7 +124,7 @@ public class smpGameOfLife {
 		Births = new Vector();
 		Deaths = new Vector();
 		cycle = 0;		
-
+		//System.out.println( "Rows " + board.length + ", Col " + board[0].length ); 
 		//create ParallelTeam with anonymous inner class ParallelRegion
 		new ParallelTeam().execute (new ParallelRegion(){
 			
@@ -183,6 +186,7 @@ public class smpGameOfLife {
 							List<Cell> threadDeaths = new ArrayList<Cell>();
 
 							public void run( int firstRow, int lastRow ){
+								//System.out.println(firstRow + " " + lastRow);
 								for (int r = firstRow; r<= lastRow; r++){
 									for (int c = 0; c < board[0].length; c++){
 										
@@ -260,9 +264,11 @@ public class smpGameOfLife {
 		
 		//display final board configuration
 		if (printBoard){
-			System.out.println("Final Board Configuration (" + cycle + " iterations)...");
+			System.out.println("Final Board Configuration (" + (cycle-1) + " iterations)...");
 			displayBoard( board );
 		}
+		endTime = System.nanoTime();
+		System.out.println("Time: " + (endTime - startTime)/1000000 + " ms" );
 	}
 }
 }
