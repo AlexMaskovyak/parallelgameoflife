@@ -48,7 +48,7 @@ public class DynamicNeighborCommGameOfLifeSimulator extends
 			Comm commWorld,
 			File cellsFile)	
 	{
-		this(rules, neighborhood, commWorld, cellsFile, 50);
+		this(rules, neighborhood, commWorld, cellsFile, 10);
 	}
 	
 	/**
@@ -173,23 +173,179 @@ public class DynamicNeighborCommGameOfLifeSimulator extends
 	 */
 	public void performSimulation() {
 		this.iterationCount++;
+	
 		
 		if ((this.iterationCount % this.iterationThreshold) == 0) {
 			performLoadBalancing();
 		}
 		
-		this.performSimulation();
+		/*System.out.printf("Load balanced: %d: left border=%d, right border=%d\n",
+				this.processorRank, 
+				super.leftBorderYBound,
+				super.rightBorderYBound);*/
+		
+		super.performSimulation();
+		
 	}
 	
 	/**
 	 * Causes neighbors to undergo cell swapping to balance loads.
 	 */
 	protected void performLoadBalancing() {
+		
+		
+		// prepare information for dissemination
+		List<Cell> myLiveCells = super.getCurrentState();
+		Cell[] liveCellArray = myLiveCells.toArray(new Cell[myLiveCells.size()]);
+		java.util.Arrays.sort(liveCellArray, Cell.RowComparator);
+		
+		int myCellCount = super.getLivingCellCount();
+
+		if (this.processorRank % 2 == 0) {
+			sendLiveCellCount(this.rightProcessorRank, this.LEFT_CELL_COUNT);
+			int neighborCellCount = 
+				receiveLiveCellCount(
+					this.rightProcessorRank, 
+					this.RIGHT_CELL_COUNT);
+			
+			// determine whether sending should occur and in which direction
+			
+			// receive as the left processor
+			if ((neighborCellCount > -1 ) && neighborCellCount > (myCellCount * this.thresholdMod)) {
+				/*System.out.printf("Balancing: %d: I am receiving from my right, %d\n", 
+						this.processorRank, this.rightProcessorRank);*/
+				
+				int toReceive = (neighborCellCount - myCellCount) / 2;
+				
+				if (toReceive == 0) {
+					return;
+				}
+				
+				ObjectBuf<Cell> received = 
+					super.receiveLiveCells(this.rightProcessorRank, this.RIGHT_CELL_ADJUST);
+		        
+				for (int i = 0; i < super.receiveStatus.length; i++) {
+		        	Cell currentCell = received.get(i);
+		            if (currentCell != null) {
+		            	// update borders on left side, expand
+						/*System.out.printf("%d received from %d: %s\n", 
+								this.processorRank, 
+								this.rightProcessorRank, 
+								currentCell);*/
+						
+		            	this.updateBorderBounds(currentCell);
+		            	this.addLivingCell(currentCell);
+		            }
+		        }
+			}
+			
+			// send as the left processor
+			else if ((neighborCellCount > -1) && (neighborCellCount * this.thresholdMod) < myCellCount) {
+				int toSend = (myCellCount - neighborCellCount) / 2;
+				
+				if (toSend == 0) {
+					return;
+				}
+				
+				List<Cell> cellsToSend = getRightSliceOfCells(liveCellArray, toSend);
+				
+				/*System.out.printf("Balancing: %d: I am sending to my right, %d, %d cells to sendsupposed sent, %d actually\n", 
+						this.processorRank, this.rightProcessorRank, toSend, cellsToSend.size());*/
+
+				/*for (Cell c : cellsToSend) {
+					System.out.printf("%d sending to %d: %s\n", 
+							this.processorRank, 
+							this.rightProcessorRank, 
+							c);
+				}*/
+				
+				super.sendLiveCells(this.rightProcessorRank, this.LEFT_CELL_ADJUST, cellsToSend);
+				// retract border bounds on right side
+				this.rightBorderYBound = liveCellArray[liveCellArray.length - 1 - toSend].y;
+			}
+		}
+		else {			
+			int neighborCellCount = 
+				receiveLiveCellCount(
+					this.leftProcessorRank,
+					this.LEFT_CELL_COUNT);
+			sendLiveCellCount(this.leftProcessorRank, this.RIGHT_CELL_COUNT);
+			
+			// determine whether sending should occur and in which direction
+			
+			// receive as the right processor
+			if ((neighborCellCount > -1) && neighborCellCount > (myCellCount * this.thresholdMod)) {
+				int toReceive = (neighborCellCount - myCellCount) / 2;
+				
+				if (toReceive == 0) {
+					return;
+				}
+				
+				ObjectBuf<Cell> received = 
+					super.receiveLiveCells(this.leftProcessorRank, this.LEFT_CELL_ADJUST);
+
+				/*System.out.printf("%d: I am receiving from my left, %d, %d cells\n", 
+						this.processorRank, this.leftProcessorRank, received.length());	*/
+				
+				
+				for (int i = 0; i < super.receiveStatus.length; i++) {
+		        	Cell currentCell = received.get(i);
+		            if (currentCell != null) {
+		            	// update borders on left side, expand
+						/*System.out.printf("%d received from %d: %s\n", 
+								this.processorRank, 
+								this.leftProcessorRank, 
+								currentCell);*/
+
+		            	
+		            	this.updateBorderBounds(currentCell);
+		            	this.addLivingCell(currentCell);
+		            }
+		        }
+			}
+			
+			// send as the right processor
+			else if ((neighborCellCount > -1) && (neighborCellCount * this.thresholdMod) < myCellCount) {
+				int toSend = (myCellCount - neighborCellCount) / 2;
+				
+				if (toSend == 0) {
+					return;
+				}
+				
+				List<Cell> cellsToSend = getLeftSliceOfCells(liveCellArray, toSend);
+
+				/*System.out.printf("%d: I am sending to my left, %d, %d cells supposedly, %d actual\n", 
+						this.processorRank, this.leftProcessorRank, toSend, cellsToSend.size());				
+
+				for (Cell c : cellsToSend) {
+					System.out.printf("%d sending to %d: %s\n", 
+							this.processorRank, 
+							this.leftProcessorRank, 
+							c);
+				}*/
+
+				
+				super.sendLiveCells(this.leftProcessorRank, this.RIGHT_CELL_ADJUST, cellsToSend);
+				// retract border bounds on right side
+				this.leftBorderYBound = liveCellArray[toSend - 1].y;
+			}			
+		}
+		
+	}
+	
+	
+	/**
+	 * Perform load balancing, left-centric.
+	 */
+	/*protected void balanceLeftSide() {
 		// exchange live cell counts
 		List<Cell> myLiveCells = super.getCurrentState();
 		Cell[] liveCellArray = myLiveCells.toArray(new Cell[myLiveCells.size()]);
 		
 		int myLiveCellCount = super.getLivingCellCount();
+		
+		System.out.printf("%d: I am sending my left, %d, %d cells\n", 
+				this.processorRank, this.leftProcessorRank, myLiveCellCount);
 		
 		// send count values left, get count values from right
 		sendLiveCellCount(this.leftProcessorRank, this.LEFT_CELL_COUNT);
@@ -201,11 +357,18 @@ public class DynamicNeighborCommGameOfLifeSimulator extends
 		// balance out on that side
 		// if we are bigger, we need to send to the smaller
 		// send adjustments right, get adjustments left
-		if (rightNeighborLiveCellCount < (myLiveCellCount * this.thresholdMod)) {
+		System.out.printf("%d: My right, %d, has %d cells.\n", 
+				this.processorRank, rightProcessorRank, rightNeighborLiveCellCount);
+		
+		if (rightNeighborLiveCellCount == -1) {
+			return;
+		}
+		
+		if ((rightNeighborLiveCellCount * this.thresholdMod) < myLiveCellCount) {
 			int toSend = (rightNeighborLiveCellCount - myLiveCellCount) / 2;
 			List<Cell> cellsToSend = getRightSliceOfCells(liveCellArray, toSend);
 			
-			System.out.println(cellsToSend.size());
+			System.out.println();
 			
 			super.sendLiveCells(this.rightProcessorRank, this.LEFT_CELL_ADJUST, cellsToSend);
 			// retract border bounds on right side
@@ -223,21 +386,32 @@ public class DynamicNeighborCommGameOfLifeSimulator extends
 	            }
 	        }
 		}
-		
-		// send values right, get values from left
-		myLiveCells = super.getCurrentState();
-		liveCellArray = myLiveCells.toArray(new Cell[myLiveCells.size()]);
+	}*/
 
+	/**
+	 * Perform load balance, right-side centric.
+	 */
+	/*protected void balanceRightSide() {
+		// send values right, get values from left
+		List<Cell> myLiveCells = super.getCurrentState();
+		Cell[] liveCellArray = myLiveCells.toArray(new Cell[myLiveCells.size()]);
+
+		int myLiveCellCount = super.getLivingCellCount();
+		
 		sendLiveCellCount(this.rightProcessorRank, this.RIGHT_CELL_COUNT);
 		int leftNeighborLiveCellCount = 
 			this.receiveLiveCellCount(
 					this.leftProcessorRank, 
 					this.RIGHT_CELL_COUNT);
+	
+		if (leftNeighborLiveCellCount == -1) {
+			return;
+		}
 		
 		// balance out on that side
 		// if we are bigger, we need to send to the smaller
 		// send adjustments left, get adjustments right
-		if (leftNeighborLiveCellCount < (myLiveCellCount * this.thresholdMod)) {
+		if ((leftNeighborLiveCellCount * this.thresholdMod) < myLiveCellCount) {
 			int toSend = (leftNeighborLiveCellCount - myLiveCellCount) / 2;
 			List<Cell> cellsToSend = getLeftSliceOfCells(liveCellArray, toSend);
 			super.sendLiveCells(this.leftProcessorRank, this.RIGHT_CELL_ADJUST, cellsToSend);
@@ -245,7 +419,7 @@ public class DynamicNeighborCommGameOfLifeSimulator extends
 			this.leftBorderYBound = liveCellArray[toSend + 1].y;
 			//this.leftBorderYBound = liveCellArray[liveCellArray.length - 1].y;
 		}
-		else if (rightNeighborLiveCellCount > (myLiveCellCount * this.thresholdMod)) {
+		else if (leftNeighborLiveCellCount > (myLiveCellCount * this.thresholdMod)) {
 			ObjectBuf<Cell> received = super.receiveLiveCells(this.rightProcessorRank, this.RIGHT_CELL_ADJUST);
 	        for (int i = 0; i < super.receiveStatus.length; i++) {
 	        	Cell currentCell = received.get(i);
@@ -255,8 +429,8 @@ public class DynamicNeighborCommGameOfLifeSimulator extends
 	            	this.addLivingCell(currentCell);
 	            }
 	        }
-		}
-	}
+		}		
+	}*/
 	
 	/**
 	 * Get right-portion of the cell array passed in, and removes them from the
@@ -288,7 +462,7 @@ public class DynamicNeighborCommGameOfLifeSimulator extends
 		
 		for (int i = 0; i < size; ++i) {
 			portion.add(cells[i]);
-			super.livingCells.remove(cells[cells.length - i]);
+			super.livingCells.remove(cells[i]);
 		}
 		
 		return portion;
