@@ -40,7 +40,7 @@ public interface GameOfLifeSimulator {
 	/**
 	 * Simulate the cell interactions to produce the next game of life state.
 	 */
-	public abstract void performSimulation();
+	public abstract void performSimulation() throws Exception;
 
 	/**
 	 * Removes the living cell stored in this simulator that is equal to the

@@ -72,7 +72,7 @@ public class SequentialGameOfLifeSimulator implements GameOfLifeSimulator {
 	 * (non-Javadoc)
 	 * @see GameOfLifeSimulator#performSimulation()
 	 */
-	public void performSimulation() {
+	public void performSimulation() throws Exception {
 		// Preparation, clean-up, etc.
 		this.cleanCellCounts();
 		
@@ -101,14 +101,33 @@ public class SequentialGameOfLifeSimulator implements GameOfLifeSimulator {
 	}
 	
 	/**
+    * Creates an up-to-date neighbor count for all live cells as well as their
+    * neighbors (which will be created as needed).
+    */
+   protected void updateCellCounts() {
+      updateCellCounts(null);
+   }
+	
+	/**
 	 * Creates an up-to-date neighbor count for all live cells as well as their
 	 * neighbors (which will be created as needed).
 	 */
-	protected void updateCellCounts() {
+	protected void updateCellCounts(HashMap<Cell, Cell> localLivingCells) {
 		//
 		// setup temporary references
 		//
-		Set<Cell> livingCellSet = this.livingCells.keySet();
+	
+		Set<Cell> livingCellSet;
+		
+		if (localLivingCells == null)
+		{
+		   livingCellSet = this.livingCells.keySet();
+		}
+		else
+		{
+		   livingCellSet = localLivingCells.keySet();
+		}
+		
 		List<Cell> neighbors;
 
 		// add neighbors to the gestating area where needed

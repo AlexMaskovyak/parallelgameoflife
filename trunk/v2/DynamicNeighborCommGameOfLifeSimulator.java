@@ -171,7 +171,7 @@ public class DynamicNeighborCommGameOfLifeSimulator extends
 	 * (non-Javadoc)
 	 * @see NeighborCommGameOfLifeSimulator#performSimulation()
 	 */
-	public void performSimulation() {
+	public void performSimulation() throws Exception {
 		this.iterationCount++;
 	
 		
