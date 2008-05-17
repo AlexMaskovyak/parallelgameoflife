@@ -90,6 +90,10 @@ public class GameOfLife {
 						1);
 				break;
 			case SMP: 
+			   simulator = new SMPGameOfLifeSimulator(
+                  rules,
+                  neighborhood,
+                  cellsFile);
 				break;
 			default:
 				List<Cell> liveCells = 
@@ -105,14 +109,21 @@ public class GameOfLife {
 
 		// run the simulation
 		for (int i = 0; i < iterationsToRun; ++i) {
-			simulator.performSimulation();
+		   try
+		   {
+		      simulator.performSimulation();
+		   }
+		   catch (Exception e)
+		   {
+		      System.out.println("PerformSimulation Exception: " + e.getMessage());
+		   }
 			//System.out.printf("Iteration %d, %d: %s cells alive\n", i, commWorld.rank(), simulator.getLivingCellCount());
 		}	
 		
-		//System.out.printf("%d has %d cells alive\n", commWorld.rank(), simulator.getLivingCellCount());
+		System.out.printf("%d has %d cells alive\n", commWorld.rank(), simulator.getLivingCellCount());
 		
 		for (Cell c : simulator.getCurrentState()) {
-			System.out.printf("%d: %s\n", commWorld.rank(), c);
+			//System.out.printf("%d: %s\n", commWorld.rank(), c);
 		}
 		
 		// display running time
@@ -151,8 +162,14 @@ public class GameOfLife {
 		}
 		System.out.println();
 		
-		// go ahead and run an iteration
-		simulator.performSimulation();
+		try
+      {
+         simulator.performSimulation();
+      }
+      catch (Exception e)
+      {
+         System.out.println("PerformSimulation Exception: " + e.getMessage());
+      }
 		
 		// lets see the result
 		livingCells = simulator.getCurrentState();
@@ -162,7 +179,14 @@ public class GameOfLife {
 		System.out.println();
 		
 		// again!
-		simulator.performSimulation();
+		try
+      {
+         simulator.performSimulation();
+      }
+      catch (Exception e)
+      {
+         System.out.println("PerformSimulation Exception: " + e.getMessage());
+      }
 		livingCells = simulator.getCurrentState();
 		for (Cell cell : livingCells) {
 			System.out.printf("%s\n", cell);

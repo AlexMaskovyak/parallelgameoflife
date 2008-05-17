@@ -262,7 +262,7 @@ public class NeighborCommGameOfLifeSimulator extends SequentialGameOfLifeSimulat
 	/* (non-Javadoc)
 	 * @see GameOfLifeSimulator#performSimulation()
 	 */
-	public void performSimulation() {
+	public void performSimulation() throws Exception {
 		// update left and right border cell lists
 		this.updateBorderCellLists();
 		
