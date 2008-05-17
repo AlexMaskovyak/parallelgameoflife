@@ -107,7 +107,7 @@ public class NeighborCommGameOfLifeSimulator extends SequentialGameOfLifeSimulat
 			}
 		}
 		
-		System.out.printf("%d has left border %d, right border %d\n", this.processorRank, this.leftBorderYBound, this.rightBorderYBound);
+		//System.out.printf("%d has left border %d, right border %d\n", this.processorRank, this.leftBorderYBound, this.rightBorderYBound);
 	}
    
 	
@@ -214,7 +214,6 @@ public class NeighborCommGameOfLifeSimulator extends SequentialGameOfLifeSimulat
 					neighborRank, 
 					tag,
 					livingCellsToReceive);
-			System.out.println(this.receiveStatus.length);
 		}
 		catch (Exception e) {
             System.out.printf(
