@@ -8,6 +8,7 @@ import edu.rit.pj.ParallelTeam;
 import edu.rit.pj.ParallelRegion;
 import edu.rit.pj.ParallelSection;
 import edu.rit.pj.IntegerForLoop;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * MasterCommGameOfLifeSimulator is responsible for storing game logic, storing
@@ -68,7 +69,7 @@ public class SMPGameOfLifeSimulator extends SequentialGameOfLifeSimulator {
       {
          public void run() throws Exception
          {
-            final int x = getThreadIndex() + 1;
+            final int myTeamID = getThreadIndex() + 1;
             
             //
             // Each Parallel Team Thread has an Alive Cell chunk to process.
@@ -80,7 +81,7 @@ public class SMPGameOfLifeSimulator extends SequentialGameOfLifeSimulator {
                
                public void run(int first, int last) throws Exception
                {
-                  //System.out.println("Thread " + x + ": Living Cells Range " + first + "-" + last);
+                  //System.out.println("Thread " + myTeamID + ": Living Cells Range " + first + "-" + last);
 
                   for (int i = first; i <= last; i++)
                   {
@@ -96,7 +97,7 @@ public class SMPGameOfLifeSimulator extends SequentialGameOfLifeSimulator {
                      }
                      
                      localLivingCells.put(temp, temp);
-                     //System.out.println("Thread " + x + ": " + temp.toString());
+                     //System.out.println("Thread " + myTeamID + ": " + temp.toString());
                   }
                   
                   //
@@ -104,13 +105,7 @@ public class SMPGameOfLifeSimulator extends SequentialGameOfLifeSimulator {
                   // the shared Living Cells HashMap
                   //
                   
-                  critical(new ParallelSection()
-                  {
-                     public void run()
-                     {
-                        updateCellCounts(localLivingCells);
-                     }
-                  });
+                  updateCellCounts(localLivingCells);
                }
             });
          }
