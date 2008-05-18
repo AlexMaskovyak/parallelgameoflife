@@ -2,7 +2,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Set;
-
+import java.util.concurrent.ConcurrentHashMap;
 
 
 /**
@@ -21,9 +21,9 @@ public class SequentialGameOfLifeSimulator implements GameOfLifeSimulator {
 	// <cell used strictly for identification, cell with current neighborcount>
 	
 	// hold live cells
-	protected HashMap<Cell, Cell> livingCells;
+	protected ConcurrentHashMap<Cell, Cell> livingCells;
 	// hold potentially alive cells
-	protected HashMap<Cell, Cell> gestatingCells;
+	protected ConcurrentHashMap<Cell, Cell> gestatingCells;
 	
 	// hold those cells which ought to be removed from the livingCells area
 	protected List<Cell> cellsToRemove;
@@ -56,8 +56,8 @@ public class SequentialGameOfLifeSimulator implements GameOfLifeSimulator {
 			CellNeighborhood neighborhood) 
 	{
 		// set our internal values
-		this.livingCells = new HashMap<Cell, Cell>();
-		this.gestatingCells = new HashMap<Cell, Cell>();
+		this.livingCells = new ConcurrentHashMap<Cell, Cell>();
+		this.gestatingCells = new ConcurrentHashMap<Cell, Cell>();
 		
 		this.cellsToRemove = new ArrayList<Cell>();
 		

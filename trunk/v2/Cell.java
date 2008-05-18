@@ -35,6 +35,13 @@ public class Cell implements java.io.Serializable, Comparable<Cell> {
 		this.y = y;
 	}
 	
+	public Cell(Cell newCell)
+	{
+	   this.x = newCell.x;
+      this.y = newCell.y;
+      this.neighborCount = newCell.neighborCount;
+	}
+	
 
 	/**
 	 * Implementation for the Comparable interface.
