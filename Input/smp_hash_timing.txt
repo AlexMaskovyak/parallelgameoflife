@@ -17,7 +17,7 @@ do
   echo "~~~~~~~~~~~~~~~~~~~~~~~" >> $2
   echo Test Case 100 x 100 : Dens 20 : 100 Iterations >> $2
 
-  java -Dpj.np=$x GameOfLife 100 100 100 input_100x100_dens_20.txt $1 >> $2
+  java -Dpj.nt=$x GameOfLife 100 100 100 input_100x100_dens_20.txt $1 >> $2
 
   echo "~~~~~~~~~~~~~~~~~~~~~~~" >> $2
   echo "" >> $2
@@ -31,7 +31,7 @@ do
   echo "~~~~~~~~~~~~~~~~~~~~~~~" >> $2
   echo Test Case 500 x 500 : Dens 20 : 100 Iterations >> $2
 
-  java -Dpj.np=$x GameOfLife 500 500 100 input_500x500_dens_20.txt $1 >> $2
+  java -Dpj.nt=$x GameOfLife 500 500 100 input_500x500_dens_20.txt $1 >> $2
 
   echo "~~~~~~~~~~~~~~~~~~~~~~~" >> $2
   echo "" >> $2
@@ -45,7 +45,7 @@ do
   echo "~~~~~~~~~~~~~~~~~~~~~~~" >> $2
   echo Test Case 1000 x 1000 : Dens 20 : 100 Iterations >> $2
 
-  java -Dpj.np=$x GameOfLife 1000 1000 100 input_1000x1000_dens_20.txt $1 >> $2
+  java -Dpj.nt=$x GameOfLife 1000 1000 100 input_1000x1000_dens_20.txt $1 >> $2
 
   echo "~~~~~~~~~~~~~~~~~~~~~~~" >> $2
   echo "" >> $2  
@@ -58,7 +58,7 @@ do
   echo "~~~~~~~~~~~~~~~~~~~~~~~" >> $2
   echo Test Case 1000 x 1000 : Dens 30 : 100 Iterations >> $2
   
-  java -Dpj.np=$x GameOfLife 1000 1000 100 input_1000x1000_dens_30.txt $1 >> $2
+  java -Xmx2048m -Dpj.nt=$x GameOfLife 1000 1000 100 input_1000x1000_dens_30.txt $1 >> $2
   
   echo "~~~~~~~~~~~~~~~~~~~~~~~" >> $2
   echo "" >> $2
@@ -71,7 +71,7 @@ do
   echo "~~~~~~~~~~~~~~~~~~~~~~~" >> $2
   echo Test Case 1000 x 1000 : Dens 40 : 100 Iterations >> $2
 
-  java -Dpj.np=$x GameOfLife 1000 1000 100 input_1000x1000_dens_40.txt $1 >> $2
+  java -Xmx2048m -Dpj.nt=$x GameOfLife 1000 1000 100 input_1000x1000_dens_40.txt $1 >> $2
 
   echo "~~~~~~~~~~~~~~~~~~~~~~~" >> $2
   echo "" >> $2
@@ -85,7 +85,7 @@ do
   echo "~~~~~~~~~~~~~~~~~~~~~~~" >> $2
   echo Test Case 1000 x 1000 : Dens 20 : 1000 Iterations >> $2
 
-  java -Dpj.np=$x GameOfLife 1000 1000 1000 input_1000x1000_dens_20.txt $1 >> $2
+  java -Xmx2048m -Dpj.nt=$x GameOfLife 1000 1000 1000 input_1000x1000_dens_20.txt $1 >> $2
 
   echo "~~~~~~~~~~~~~~~~~~~~~~~" >> $2
   echo "" >> $2
@@ -99,7 +99,7 @@ do
   echo "~~~~~~~~~~~~~~~~~~~~~~~" >> $2
   echo Test Case 1000 x 1000 : Dens 20 : 10000 Iterations >> $2
 
-  java -Dpj.np=$x GameOfLife 1000 1000 10000 input_1000x1000_dens_20.txt $1 >> $2
+  java  -Xmx2048m -Dpj.nt=$x GameOfLife 1000 1000 10000 input_1000x1000_dens_20.txt $1 >> $2
 
   echo "~~~~~~~~~~~~~~~~~~~~~~~" >> $2
   echo "" >> $2
