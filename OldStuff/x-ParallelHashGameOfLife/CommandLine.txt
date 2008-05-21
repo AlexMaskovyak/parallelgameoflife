@@ -1,0 +1,109 @@
+/usr/local/versions/jdk-1.5.0_15/bin/javac ParallelHashGameOfLife/*.java
+/usr/local/versions/jdk-1.5.0_15/bin/javac ParallelMatrixGameOfLife/*.java
+/usr/local/versions/jdk-1.5.0_15/bin/javac SerialHashGameOfLife/*.java
+
+java GameOfLife 1000 1000 100 cells_1000x1000.txt
+
+java -Dpj.np=4 GameOfLife 10 10 50 1 cells_10x10.txt
+java -Dpj.np=4 GameOfLife 10 10 50 2 cells_10x10.txt
+java -Dpj.np=4 GameOfLife 10 10 50 10 cells_10x10.txt
+
+
+java -Dpj.np=8 GameOfLife 10 10 50 10 cells_10x10.txt
+java -Dpj.np=16 GameOfLife 10 10 50 10 cells_10x10.txt
+java -Dpj.np=16 GameOfLife 10 10 50 100 cells_10x10.txt
+java -Dpj.np=16 GameOfLife 10 10 50 1000 cells_10x10.txt
+
+java -Dpj.np=8 GameOfLife 1000 1000 199448 10 cells_1000x1000.txt
+java -Dpj.np=8 GameOfLife 1000 1000 199448 100 cells_1000x1000.txt
+
+java -Dpj.np=16 GameOfLife 1000 1000 199448 1 cells_1000x1000.txt
+java -Dpj.np=16 GameOfLife 1000 1000 199448 10 cells_1000x1000.txt
+java -Dpj.np=16 GameOfLife 1000 1000 199448 100 cells_1000x1000.txt
+
+java -Dpj.np=32 GameOfLife 1000 1000 199448 100 cells_1000x1000.txt
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	   
+	   for (Cell c : livingCells) {
+
+	      System.out.println("Processor " + simulator.getProcessorRank() + "(" + c.x + "," + c.y + ")");
+      }
+	   
+	   
+
+//       for (Cell cell : livingCells) {
+//          System.out.print("Processor: " + simulator.getProcessorRank() + " ");
+//          System.out.printf("%s\n", cell);
+//       }
+//      System.out.println();
+
+
+
+
+
+
+
+
+	   
+	   //
+	   // Depending on the number of available processors and the input
+	   // size, seek to specific file positions to read input data.
+	   //
+	   
+	   int numCellsToRead = (simulator.getNumLivingCellsInFile() / simulator.getNumProcessors());
+	   int startCellPos = numCellsToRead * simulator.getProcessorRank();
+	   
+	   //
+	   // Send all 'leftover' cells to the last processor.
+	   //
+	   
+//	   if (simulator.getProcessorRank() == simulator.getNumProcessors() - 1)
+//	   {
+//	      numCellsToRead += (simulator.getNumLivingCellsInFile() % simulator.getNumProcessors());
+//	   }
+	   
+	  // System.out.println("Processor " + simulator.getProcessorRank() + ": has " + numCellsToRead + " CELLS...");
+	   
+	   //
+      // Run the Game of Life simulation on all available processors.
+      //
+	   
+	   for (int i = 0; i < nNumIterationsToRun; i++)
+       {
+          simulator.sendBorders();
+          simulator.receiveBorders();
+          simulator.performSimulation();
+            
+//           List<Cell> livingCells2 = simulator.getCurrentState();
+//            for (Cell cell : livingCells2) {
+//               System.out.print("Processor: " + simulator.getProcessorRank() + " ");
+//               System.out.printf("%s\n", cell);
+//            }
+//           System.out.println();
+       }
